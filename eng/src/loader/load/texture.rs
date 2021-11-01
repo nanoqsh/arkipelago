@@ -11,7 +11,7 @@ impl<'a> Load<'a> for TextureLoad<'a> {
     type Asset = Texture;
 
     fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
-        use ngl::texture_parameters::*;
+        use ngl::texture::*;
 
         let (data, format) = match &raw {
             DynamicImage::ImageLuma8(data) => (data.as_raw(), Format::R),

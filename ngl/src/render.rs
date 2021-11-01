@@ -1,22 +1,24 @@
 use crate::{
     buffer::{
         renderbuffer,
-        texture::{self, Parameters, Texture},
+        texture::{self, Texture},
         Attachments, Framebuffer,
     },
     debug::{debug_gl, Debugger},
     line::Line,
     mesh::Indexed,
+    pass::{ColorInner, InterfaceInner, SkinInner, SolidInner},
     quad::Quad,
-    shader_set::ShaderSet,
+    shaders::Shaders,
     vertex::Vertex,
+    Pipeline,
 };
 use glow::{Context, HasContext};
 use shr::{cgm::*, shapes::*};
 use std::rc::Rc;
 
 pub struct Render {
-    shader: ShaderSet,
+    shaders: Shaders,
     framebuffer: Framebuffer,
     line: Line,
     quad: Quad,
@@ -54,7 +56,7 @@ impl Render {
         debug_gl!(deb);
 
         Self {
-            shader: ShaderSet::new(Rc::clone(&ctx)),
+            shaders: Shaders::new(Rc::clone(&ctx)),
             framebuffer: {
                 Framebuffer::new(
                     Rc::clone(&ctx),
@@ -91,15 +93,10 @@ impl Render {
         debug_gl!(self.deb);
     }
 
-    pub fn make_texture(&self, data: &[u8], size: UVec2, params: Parameters) -> Texture {
+    pub fn make_texture(&self, data: &[u8], size: UVec2, params: texture::Parameters) -> Texture {
         let tex = Texture::new(Rc::clone(&self.ctx), data, size, params);
         debug_gl!(self.deb);
         tex
-    }
-
-    pub fn bind_texture(&self, tex: &Texture) {
-        self.shader.bind_texture(tex);
-        debug_gl!(self.deb);
     }
 
     pub fn make_indexed_mesh(&self, verts: &[Vertex], indxs: &[u32]) -> Indexed<Vertex> {
@@ -108,52 +105,66 @@ impl Render {
         mesh
     }
 
-    pub fn draw_indexed_mesh(&mut self, mesh: &Indexed<Vertex>) {
-        self.shader.use_def();
-        mesh.bind();
-        mesh.draw();
-        debug_gl!(self.deb);
-    }
+    pub fn draw(&self, pipeline: &Pipeline, params: Parameters) {
+        let Parameters { cl, view, proj } = params;
 
-    pub fn draw_line(&mut self, a: Vec3, b: Vec3, cl: Vec3) {
-        self.shader.use_col();
-
-        unsafe {
-            self.ctx.disable(glow::DEPTH_TEST);
-            self.line.draw(a, b, cl);
-            self.ctx.enable(glow::DEPTH_TEST);
-        }
-
-        debug_gl!(self.deb);
-    }
-
-    pub fn clear(&self, cl: Vec3) {
+        self.framebuffer.bind();
         unsafe {
             let (r, g, b) = cl.into();
             self.ctx.clear_color(r, g, b, 1.);
             self.ctx.clear(glow::COLOR_BUFFER_BIT);
         }
-
         debug_gl!(self.deb);
-    }
 
-    pub fn start_frame(&mut self) {
-        self.framebuffer.bind();
+        unsafe { self.ctx.enable(glow::DEPTH_TEST) }
+        let inner = SolidInner::new(&self.shaders.solid);
+        if let Some(view) = view {
+            inner.set_view(view)
+        }
+        if let Some(proj) = proj {
+            inner.set_proj(proj)
+        }
+        pipeline.draw_solid(inner);
         debug_gl!(self.deb);
-    }
 
-    pub fn finish_frame(&mut self) {
-        self.framebuffer.bind_default();
-        let frame = self.framebuffer.texture(0).unwrap();
-        self.shader.bind_texture(frame);
+        let inner = SkinInner::new(&self.shaders.skin);
+        if let Some(view) = view {
+            inner.set_view(view)
+        }
+        if let Some(proj) = proj {
+            inner.set_proj(proj)
+        }
+        pipeline.draw_skin(inner);
+        debug_gl!(self.deb);
 
         unsafe { self.ctx.disable(glow::DEPTH_TEST) }
-        self.shader.use_post();
+        let inner = ColorInner::new(&self.shaders.color, &self.line);
+        if let Some(view) = view {
+            inner.set_view(view)
+        }
+        if let Some(proj) = proj {
+            inner.set_proj(proj)
+        }
+        pipeline.draw_color(inner);
+        debug_gl!(self.deb);
+
+        self.framebuffer.bind_default();
+        let frame = self.framebuffer.texture(0).unwrap();
+        frame.bind(Shaders::T0);
+        self.shaders.post.use_program();
         self.quad.draw(
             Rect::new((-1., -1.), (1., 1.)),
             Rect::new((0., 0.), (1., 1.)),
         );
+        debug_gl!(self.deb);
 
+        pipeline.draw_interface(InterfaceInner(()));
         debug_gl!(self.deb);
     }
+}
+
+pub struct Parameters<'a> {
+    cl: Vec3,
+    view: Option<&'a Mat4>,
+    proj: Option<&'a Mat4>,
 }

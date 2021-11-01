@@ -24,12 +24,12 @@ pub(crate) fn impl_macro(ast: &DeriveInput) -> impl Into<TokenStream> {
 
         match &field.ty {
             Type::Array(TypeArray { elem, .. }) => quote! {
-                fn #set_name(&self, val: &[#elem]) {
+                pub(crate) fn #set_name(&self, val: &[#elem]) {
                     self.program.uniform_slice(self.#field_name, val);
                 }
             },
             field_type => quote! {
-                fn #set_name(&self, val: &#field_type) {
+                pub(crate) fn #set_name(&self, val: &#field_type) {
                     self.program.uniform(self.#field_name, val);
                 }
             },
@@ -53,7 +53,7 @@ pub(crate) fn impl_macro(ast: &DeriveInput) -> impl Into<TokenStream> {
                 }
             }
 
-            fn use_program(&self) {
+            pub(crate) fn use_program(&self) {
                 self.program.use_program()
             }
 

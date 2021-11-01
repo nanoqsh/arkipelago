@@ -15,4 +15,4 @@ pub use ngl::GL_VERSION;
 
 pub type Ren = ngl::Render;
 pub type Vert = ngl::vertex::Vertex;
-pub type Texture = ngl::Texture;
+pub type Texture = ngl::texture::Texture;

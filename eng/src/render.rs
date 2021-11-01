@@ -1,6 +1,5 @@
 use crate::{atlas::Atlas, loader::Loader, Ren};
 use image::GenericImageView;
-use shr::cgm::*;
 use std::{cell::RefCell, rc::Rc};
 
 pub struct Render {
@@ -35,7 +34,6 @@ impl Render {
     }
 
     pub fn init(self) -> Self {
-        let sprites = Rc::new(RefCell::new(Vec::new()));
         let mut loader = Loader::new();
         loader.on_load_mesh(|name, mesh| {
             println!(
@@ -52,6 +50,7 @@ impl Render {
             println!("Loaded texture {} (size: ({}, {}))", name, width, height)
         });
 
+        let sprites = Rc::new(RefCell::new(Vec::new()));
         loader.on_load_sprite({
             let sprites = Rc::clone(&sprites);
             move |name, sprite| {
@@ -62,12 +61,11 @@ impl Render {
         });
 
         let mesh = loader.load_mesh("cube").unwrap();
-        let _ = self.ren.make_indexed_mesh(mesh.verts(), mesh.indxs());
+        let cube = self.ren.make_indexed_mesh(mesh.verts(), mesh.indxs());
+        let stone = loader.load_texture("tiles/stone", &self.ren).unwrap();
 
-        loader.load_texture("tiles/stone", &self.ren).unwrap();
         loader.load_sprite("tiles/stone").unwrap();
         loader.load_sprite("tiles/dirt").unwrap();
-
         let atlas = Atlas::new(sprites.borrow().iter().map(Rc::as_ref)).unwrap();
         let _ = atlas.map();
         let _ = atlas.addition_fn();
@@ -81,8 +79,6 @@ impl Render {
     }
 
     pub fn draw(&mut self) {
-        self.ren.start_frame();
-        self.ren.clear(Vec3::new(0.1, 0.0, 0.2));
-        self.ren.finish_frame();
+        // self.ren.draw()
     }
 }
