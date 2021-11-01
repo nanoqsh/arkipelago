@@ -10,8 +10,8 @@ pub struct App {
 }
 
 impl App {
-    fn draw_frame(&mut self, _: f32) {
-        self.game.draw(&mut self.render)
+    fn draw_frame(&mut self, delta: f32) {
+        self.game.draw(&mut self.render, delta)
     }
 
     fn resize(&mut self, (width, height): (u32, u32)) {
@@ -36,7 +36,7 @@ impl App {
     }
 
     fn mouse_move(&mut self, (x, y): (f32, f32)) {
-        self.game.input(Control::Look(x, y))
+        self.game.input(Control::Look(x, -y))
     }
 
     fn mouse(&mut self, _: MouseButton, _: ElementState) {}
@@ -48,12 +48,11 @@ impl App {
 
 fn main() {
     let (window, render) = Window::new("hui 0.0.1");
-    window.run(
-        App {
-            render: render.init(),
-            game: Game::new(),
-        },
-        30,
-        (800, 600),
-    )
+    let (render, data) = render.init();
+    let app = App {
+        render,
+        game: Game::new(data),
+    };
+
+    window.run(app, 30, (800, 600))
 }

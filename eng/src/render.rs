@@ -1,9 +1,18 @@
-use crate::{atlas::Atlas, loader::Loader, Ren};
+use crate::{atlas::Atlas, loader::Loader, Ren, Vert};
 use image::GenericImageView;
+use ngl::{mesh::Indexed, texture::Texture, Parameters, Pipe};
+use shr::cgm::*;
 use std::{cell::RefCell, rc::Rc};
+
+pub struct Data {
+    pub mesh: Indexed<Vert>,
+    pub tex: Rc<Texture>,
+}
 
 pub struct Render {
     ren: Ren,
+    view: Option<Mat4>,
+    proj: Option<Mat4>,
 }
 
 impl Render {
@@ -30,10 +39,12 @@ impl Render {
 
         Self {
             ren: Ren::new(load),
+            view: None,
+            proj: None,
         }
     }
 
-    pub fn init(self) -> Self {
+    pub fn init(self) -> (Self, Data) {
         let mut loader = Loader::new();
         loader.on_load_mesh(|name, mesh| {
             println!(
@@ -71,14 +82,38 @@ impl Render {
         let _ = atlas.addition_fn();
         let _ = atlas.multiplier();
 
-        self
+        (
+            self,
+            Data {
+                mesh: cube,
+                tex: stone,
+            },
+        )
     }
 
     pub fn resize(&mut self, size: (u32, u32)) {
         self.ren.resize(size.into())
     }
 
-    pub fn draw(&mut self) {
-        // self.ren.draw()
+    pub fn set_view(&mut self, view: Mat4) {
+        self.view = Some(view)
+    }
+
+    pub fn set_proj(&mut self, proj: Mat4) {
+        self.proj = Some(proj)
+    }
+
+    pub fn draw<'a, D>(&mut self, draws: D)
+    where
+        D: IntoIterator<Item = &'a dyn Pipe>,
+    {
+        self.ren.draw(
+            draws,
+            Parameters {
+                cl: Vec3::new(0.2, 0., 0.1),
+                view: self.view.take().as_ref(),
+                proj: self.proj.take().as_ref(),
+            },
+        )
     }
 }

@@ -6,7 +6,7 @@ mod draw;
 mod layout;
 mod line;
 pub mod mesh;
-mod pass;
+pub mod pass;
 mod program;
 mod quad;
 mod render;

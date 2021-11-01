@@ -36,22 +36,6 @@ impl<'a> Pipeline<'a> {
         self.interface.push(draw)
     }
 
-    pub fn fill<D>(&mut self, draws: D)
-    where
-        D: IntoIterator<Item = &'a dyn Pipe>,
-    {
-        for draw in draws {
-            draw.pipe(self)
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.solid.clear();
-        self.skin.clear();
-        self.color.clear();
-        self.interface.clear();
-    }
-
     pub(crate) fn draw_solid(&self, inner: SolidInner) {
         for draw in &self.solid {
             draw.draw(Pass(inner))
@@ -73,6 +57,44 @@ impl<'a> Pipeline<'a> {
     pub(crate) fn draw_interface(&self, inner: InterfaceInner) {
         for draw in &self.interface {
             draw.draw(Pass(inner))
+        }
+    }
+
+    pub(crate) fn filled<'b, D>(self, draws: D) -> Pipeline<'b>
+    where
+        D: IntoIterator<Item = &'b dyn Pipe>,
+    {
+        let mut pipeline = self.ensure_empty();
+        for draw in draws {
+            draw.pipe(&mut pipeline)
+        }
+        pipeline
+    }
+
+    pub(crate) fn cleared<'b>(mut self) -> Pipeline<'b> {
+        self.solid.clear();
+        self.skin.clear();
+        self.color.clear();
+        self.interface.clear();
+        self.ensure_empty()
+    }
+
+    fn ensure_empty<'b>(self) -> Pipeline<'b> {
+        fn safe_capacity<'a, 'b, S>(mut v: Vec<&'a dyn Draw<S>>) -> Vec<&'b dyn Draw<S>> {
+            unsafe {
+                assert!(v.is_empty());
+                let ptr = v.as_mut_ptr() as *mut *const dyn Draw<S>;
+                let cap = v.capacity();
+                std::mem::forget(v);
+                Vec::from_raw_parts(ptr as *mut &dyn Draw<S>, 0, cap)
+            }
+        }
+
+        Pipeline {
+            solid: safe_capacity(self.solid),
+            skin: safe_capacity(self.skin),
+            color: safe_capacity(self.color),
+            interface: safe_capacity(self.interface),
         }
     }
 }

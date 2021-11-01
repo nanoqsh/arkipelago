@@ -13,7 +13,7 @@ impl FpCamera {
 
     pub fn with_rot(rot: Vec2) -> Self {
         Self {
-            cam: Camera::new(Pnt3::origin(), Pnt3::new(0., 0., 1.)),
+            cam: Camera::new(Pnt3::origin(), Pnt3::origin()),
             rot: Rot::new(rot),
         }
     }

@@ -11,7 +11,7 @@ use crate::{
     quad::Quad,
     shaders::Shaders,
     vertex::Vertex,
-    Pipeline,
+    Pipe, Pipeline,
 };
 use glow::{Context, HasContext};
 use shr::{cgm::*, shapes::*};
@@ -20,6 +20,7 @@ use std::rc::Rc;
 pub struct Render {
     shaders: Shaders,
     framebuffer: Framebuffer,
+    pipeline: Pipeline<'static>,
     line: Line,
     quad: Quad,
     deb: Debugger,
@@ -67,6 +68,7 @@ impl Render {
                     UVec2::new(1, 1),
                 )
             },
+            pipeline: Pipeline::default(),
             line: Line::new(Rc::clone(&ctx)),
             quad: Quad::new(Rc::clone(&ctx)),
             deb: {
@@ -105,18 +107,27 @@ impl Render {
         mesh
     }
 
-    pub fn draw(&self, pipeline: &Pipeline, params: Parameters) {
+    pub fn draw<'a, D>(&mut self, draws: D, params: Parameters)
+    where
+        D: IntoIterator<Item = &'a dyn Pipe>,
+    {
         let Parameters { cl, view, proj } = params;
+        let pipeline = std::mem::take(&mut self.pipeline).filled(draws);
 
         self.framebuffer.bind();
         unsafe {
             let (r, g, b) = cl.into();
             self.ctx.clear_color(r, g, b, 1.);
-            self.ctx.clear(glow::COLOR_BUFFER_BIT);
+            self.ctx.clear_depth_f32(1.);
+            self.ctx
+                .clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
         }
         debug_gl!(self.deb);
 
-        unsafe { self.ctx.enable(glow::DEPTH_TEST) }
+        unsafe {
+            self.ctx.enable(glow::DEPTH_TEST);
+            self.ctx.depth_func(glow::LESS);
+        }
         let inner = SolidInner::new(&self.shaders.solid);
         if let Some(view) = view {
             inner.set_view(view)
@@ -160,11 +171,13 @@ impl Render {
 
         pipeline.draw_interface(InterfaceInner(()));
         debug_gl!(self.deb);
+
+        self.pipeline = pipeline.cleared();
     }
 }
 
 pub struct Parameters<'a> {
-    cl: Vec3,
-    view: Option<&'a Mat4>,
-    proj: Option<&'a Mat4>,
+    pub cl: Vec3,
+    pub view: Option<&'a Mat4>,
+    pub proj: Option<&'a Mat4>,
 }
