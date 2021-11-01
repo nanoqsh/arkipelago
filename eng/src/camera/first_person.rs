@@ -13,7 +13,7 @@ impl FpCamera {
 
     pub fn with_rot(rot: Vec2) -> Self {
         Self {
-            cam: Camera::new(Pnt3::origin(), Pnt3::origin()),
+            cam: Camera::new(Pnt3::origin(), Pnt3::new(1., 0., 0.)),
             rot: Rot::new(rot),
         }
     }
@@ -36,6 +36,13 @@ impl FpCamera {
     }
 
     pub fn rotate(&mut self, delta: Vec2) {
-        self.rot = Rot::new(self.rot() + delta)
+        self.rot = Rot::new(self.rot() + delta);
+    }
+
+    pub fn move_to(&mut self, delta: Vec3) {
+        let dir = self.cam.look() - self.cam.pos();
+        let right = dir.cross(Vec3::unit_y()).normalize();
+        let offset = Mat3::from_cols(right, Vec3::unit_y(), dir) * delta;
+        self.cam.set_pos(self.cam.pos() + offset);
     }
 }

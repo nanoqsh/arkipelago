@@ -36,7 +36,7 @@ impl App {
     }
 
     fn mouse_move(&mut self, (x, y): (f32, f32)) {
-        self.game.input(Control::Look(x, -y))
+        self.game.input(Control::Look(x, y))
     }
 
     fn mouse(&mut self, _: MouseButton, _: ElementState) {}
