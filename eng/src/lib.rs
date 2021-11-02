@@ -11,8 +11,5 @@ pub use self::{
     game::{Control, Game},
     render::Render,
 };
-pub use ngl::GL_VERSION;
 
-pub type Ren = ngl::Render;
-pub type Vert = ngl::vertex::Vertex;
-pub type Texture = ngl::texture::Texture;
+pub use ngl::GL_VERSION;

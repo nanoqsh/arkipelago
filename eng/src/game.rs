@@ -1,9 +1,17 @@
-use crate::{camera::TpCamera, render::Data, Render};
+use crate::{atlas::Atlas, camera::TpCamera, loader::Loader, render::*};
+use image::{DynamicImage, GenericImageView};
 use ngl::{
+    mesh::Indexed,
     pass::{Pass, Solid, Stage},
     Draw, Pipe, Pipeline,
 };
 use shr::cgm::*;
+use std::rc::Rc;
+
+struct Data {
+    pub mesh: Indexed<Vert>,
+    pub tex: Rc<Texture>,
+}
 
 impl Draw<Solid> for Data {
     fn draw<'a>(&self, pass: Pass<'a, Solid>)
@@ -38,9 +46,48 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(data: Data) -> Self {
+    pub fn new(ren: &Render) -> Self {
+        let mut sprites = Vec::new();
+        let mut loader = Loader::new(ren);
+        loader.on_load_mesh(|name, mesh| {
+            println!(
+                "Loaded mesh {} (indxs: {}, verts: {}, slots: {})",
+                name,
+                mesh.indxs().len(),
+                mesh.verts().len(),
+                mesh.slots().len(),
+            )
+        });
+
+        loader.on_load_texture(|name, tex| {
+            let (width, height) = tex.size().into();
+            println!("Loaded texture {} (size: ({}, {}))", name, width, height)
+        });
+
+        loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
+            let (width, height) = sprite.dimensions();
+            println!("Loaded sprite {} (size: ({}, {}))", name, width, height);
+            sprites.push(sprite);
+        });
+
+        let mesh = loader.load_mesh("cube").unwrap();
+        let cube = ren.make_mesh(&mesh);
+        let stone = loader.load_texture("tiles/stone").unwrap();
+
+        loader.load_sprite("tiles/stone").unwrap();
+        loader.load_sprite("tiles/dirt").unwrap();
+        drop(loader);
+
+        let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
+        let _ = atlas.map();
+        let _ = atlas.addition_fn();
+        let _ = atlas.multiplier();
+
         Self {
-            data,
+            data: Data {
+                mesh: cube,
+                tex: stone,
+            },
             cam: TpCamera::new(1., Pnt3::origin()),
         }
     }

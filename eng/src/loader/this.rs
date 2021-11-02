@@ -5,22 +5,24 @@ use crate::{
         re::*,
     },
     mesh::Mesh,
-    Ren, Texture, Vert,
+    render::*,
 };
 use image::DynamicImage;
 use std::{path::PathBuf, rc::Rc};
 
-pub(crate) struct Loader {
+pub(crate) struct Loader<'a> {
+    ren: &'a Render,
     path: PathBuf,
     buf: String,
-    meshes: Cached<Mesh<Vert>>,
-    textures: Cached<Texture>,
-    sprites: Cached<DynamicImage>,
+    meshes: Cached<'a, Mesh<Vert>>,
+    textures: Cached<'a, Texture>,
+    sprites: Cached<'a, DynamicImage>,
 }
 
-impl Loader {
-    pub fn new() -> Self {
+impl<'a> Loader<'a> {
+    pub fn new(ren: &'a Render) -> Self {
         Self {
+            ren,
             path: PathBuf::with_capacity(64),
             buf: String::with_capacity(64),
             meshes: Cached::with_capacity(8),
@@ -38,12 +40,12 @@ impl Loader {
         })
     }
 
-    pub fn load_texture<S>(&mut self, name: S, ren: &Ren) -> Result<Rc<Texture>, Error>
+    pub fn load_texture<S>(&mut self, name: S) -> Result<Rc<Texture>, Error>
     where
         S: Into<String>,
     {
         self.textures.load(name, |name| {
-            read(&mut self.path, name, TextureLoad { ren }, Png)
+            read(&mut self.path, name, TextureLoad { ren: self.ren }, Png)
         })
     }
 
@@ -57,21 +59,21 @@ impl Loader {
 
     pub fn on_load_mesh<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<Mesh<Vert>>) + 'static,
+        F: FnMut(&str, Rc<Mesh<Vert>>) + 'a,
     {
         self.meshes.on_load(Box::new(event))
     }
 
     pub fn on_load_texture<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<Texture>) + 'static,
+        F: FnMut(&str, Rc<Texture>) + 'a,
     {
         self.textures.on_load(Box::new(event))
     }
 
     pub fn on_load_sprite<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<DynamicImage>) + 'static,
+        F: FnMut(&str, Rc<DynamicImage>) + 'a,
     {
         self.sprites.on_load(Box::new(event))
     }

@@ -1,7 +1,7 @@
 use crate::{
     loader::re::*,
     mesh::{self, Mesh, Slot},
-    Vert,
+    render::Vert,
 };
 use std::collections::HashMap;
 

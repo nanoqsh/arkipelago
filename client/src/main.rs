@@ -5,8 +5,8 @@ use eng::{Control, Game, Render};
 use glutin::event::{ElementState, MouseButton, VirtualKeyCode};
 
 pub struct App {
-    render: Render,
     game: Game,
+    render: Render,
 }
 
 impl App {
@@ -48,10 +48,9 @@ impl App {
 
 fn main() {
     let (window, render) = Window::new("hui 0.0.1");
-    let (render, data) = render.init();
     let app = App {
+        game: Game::new(&render),
         render,
-        game: Game::new(data),
     };
 
     window.run(app, 30, (800, 600))

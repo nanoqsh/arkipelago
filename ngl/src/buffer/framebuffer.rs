@@ -53,10 +53,6 @@ impl Framebuffer {
         }
     }
 
-    pub fn nat(&self) -> NativeFramebuffer {
-        self.nat
-    }
-
     pub fn bind(&self) {
         unsafe { self.ctx.bind_framebuffer(glow::FRAMEBUFFER, Some(self.nat)) }
     }

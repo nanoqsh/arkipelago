@@ -3,14 +3,14 @@ use std::{
     rc::Rc,
 };
 
-type Event<A> = Box<dyn FnMut(&str, Rc<A>)>;
+type Event<'a, A> = Box<dyn FnMut(&str, Rc<A>) + 'a>;
 
-pub(crate) struct Cached<A> {
+pub(crate) struct Cached<'a, A> {
     loaded: HashMap<String, Rc<A>>,
-    on_load: Vec<Event<A>>,
+    on_load: Vec<Event<'a, A>>,
 }
 
-impl<A> Cached<A> {
+impl<'a, A> Cached<'a, A> {
     pub fn with_capacity(cap: usize) -> Self {
         Self {
             loaded: HashMap::with_capacity(cap),
@@ -40,7 +40,7 @@ impl<A> Cached<A> {
         }
     }
 
-    pub fn on_load(&mut self, event: Event<A>) {
+    pub fn on_load(&mut self, event: Event<'a, A>) {
         self.on_load.push(event)
     }
 }

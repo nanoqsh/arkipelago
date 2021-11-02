@@ -1,8 +1,11 @@
-use crate::{loader::re::*, Ren, Texture};
+use crate::{
+    loader::re::*,
+    render::{Render, Texture},
+};
 use image::{DynamicImage, GenericImageView};
 
 pub(crate) struct TextureLoad<'a> {
-    pub ren: &'a Ren,
+    pub ren: &'a Render,
 }
 
 impl<'a> Load<'a> for TextureLoad<'a> {
@@ -22,11 +25,11 @@ impl<'a> Load<'a> for TextureLoad<'a> {
         };
 
         let size = raw.dimensions();
-        let parameters = Parameters {
+        let params = Parameters {
             format,
             ..Parameters::default()
         };
 
-        Ok(self.ren.make_texture(data, size.into(), parameters))
+        Ok(self.ren.make_texture(data, size.into(), params))
     }
 }
