@@ -2,6 +2,7 @@ mod atlas;
 #[allow(dead_code)]
 mod camera;
 mod game;
+mod land;
 mod loader;
 #[allow(dead_code)]
 mod mesh;
