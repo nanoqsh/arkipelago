@@ -6,8 +6,15 @@ use glow::{Context, HasContext, NativeFramebuffer};
 use shr::cgm::*;
 use std::rc::Rc;
 
-type Rb = (Renderbuffer, renderbuffer::Format);
-type Tx = (Texture, texture::Format);
+struct Rb {
+    rb: Renderbuffer,
+    format: renderbuffer::Format,
+}
+
+struct Tx {
+    tex: Texture,
+    format: texture::Format,
+}
 
 pub(crate) struct Framebuffer {
     nat: NativeFramebuffer,
@@ -17,11 +24,11 @@ pub(crate) struct Framebuffer {
 }
 
 impl Framebuffer {
-    pub fn new(ctx: Rc<Context>, attachments: Attachments, size: UVec2) -> Self {
+    pub fn new(ctx: Rc<Context>, attachments: Attachments, size: UVec2, samples: u8) -> Self {
         unsafe {
             let nat = ctx.create_framebuffer().expect("create framebuffer");
             ctx.bind_framebuffer(glow::FRAMEBUFFER, Some(nat));
-            let (renderbuffer, textures) = attachments.attach(Rc::clone(&ctx), size);
+            let (renderbuffer, textures) = attachments.attach(Rc::clone(&ctx), size, samples);
 
             if let Err(err) = Self::check_completion(&ctx) {
                 panic!("framebuffer is not completed: {:?}", err)
@@ -37,13 +44,17 @@ impl Framebuffer {
     }
 
     pub fn resize(&mut self, size: UVec2) {
-        if let Some((ren, format)) = &mut self.renderbuffer {
-            ren.resize(size, *format)
+        if let Some(Rb { rb, format }) = &mut self.renderbuffer {
+            rb.resize(size, *format)
         }
 
-        for (tex, format) in &mut self.textures {
+        for Tx { tex, format } in &mut self.textures {
             tex.resize(&[], size, *format)
         }
+    }
+
+    pub fn nat(&self) -> NativeFramebuffer {
+        self.nat
     }
 
     pub fn bind(&self) {
@@ -55,7 +66,30 @@ impl Framebuffer {
     }
 
     pub fn texture(&self, idx: usize) -> Option<&Texture> {
-        self.textures.get(idx).map(|(tex, _)| tex)
+        self.textures.get(idx).map(|Tx { tex, .. }| tex)
+    }
+
+    pub fn blit_to(&self, rhs: &Self, size: UVec2) {
+        let (width, height) = size.into();
+
+        unsafe {
+            self.ctx
+                .bind_framebuffer(glow::READ_FRAMEBUFFER, Some(self.nat));
+            self.ctx
+                .bind_framebuffer(glow::DRAW_FRAMEBUFFER, Some(rhs.nat));
+            self.ctx.blit_framebuffer(
+                0,
+                0,
+                width as _,
+                height as _,
+                0,
+                0,
+                width as _,
+                height as _,
+                glow::COLOR_BUFFER_BIT,
+                glow::NEAREST,
+            )
+        }
     }
 
     fn check_completion(ctx: &Context) -> Result<(), CompletionError> {
@@ -72,22 +106,32 @@ impl Drop for Framebuffer {
     }
 }
 
+#[derive(Copy, Clone)]
 pub(crate) struct Attachments<'a> {
     pub renderbuffer: Option<renderbuffer::Format>,
     pub textures: &'a [texture::Format],
 }
 
 impl Attachments<'_> {
-    fn attach(self, ctx: Rc<Context>, size: UVec2) -> (Option<Rb>, Vec<Tx>) {
+    fn attach(self, ctx: Rc<Context>, size: UVec2, samples: u8) -> (Option<Rb>, Vec<Tx>) {
         let renderbuffer = self.renderbuffer.map(|format| unsafe {
-            let renderbuffer = Renderbuffer::new(Rc::clone(&ctx), size, format);
+            let params = renderbuffer::Parameters {
+                typ: match samples {
+                    0 => renderbuffer::Type::Common,
+                    _ => renderbuffer::Type::Multisample(samples),
+                },
+                format,
+            };
+
+            let rb = Renderbuffer::new(Rc::clone(&ctx), size, params);
             ctx.framebuffer_renderbuffer(
                 glow::FRAMEBUFFER,
                 format.gl_attachment(),
                 glow::RENDERBUFFER,
-                Some(renderbuffer.nat()),
+                Some(rb.nat()),
             );
-            (renderbuffer, format)
+
+            Rb { rb, format }
         });
 
         let textures = self
@@ -95,20 +139,27 @@ impl Attachments<'_> {
             .iter()
             .enumerate()
             .map(|(n, &format)| unsafe {
-                let parameters = texture::Parameters {
+                let typ = match samples {
+                    0 => texture::Type::Common,
+                    _ => texture::Type::Multisample(samples),
+                };
+
+                let params = texture::Parameters {
+                    typ,
                     format,
                     ..texture::Parameters::default()
                 };
 
-                let texture = Texture::empty(Rc::clone(&ctx), size, parameters);
+                let tex = Texture::empty(Rc::clone(&ctx), size, params);
                 ctx.framebuffer_texture_2d(
                     glow::FRAMEBUFFER,
                     glow::COLOR_ATTACHMENT0 + n as u32,
-                    glow::TEXTURE_2D,
-                    Some(texture.nat()),
+                    tex.typ().gl(),
+                    Some(tex.nat()),
                     0,
                 );
-                (texture, format)
+
+                Tx { tex, format }
             })
             .collect();
 

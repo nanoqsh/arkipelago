@@ -1,4 +1,4 @@
-use crate::{camera::FpCamera, render::Data, Render};
+use crate::{camera::TpCamera, render::Data, Render};
 use ngl::{
     pass::{Pass, Solid, Stage},
     Draw, Pipe, Pipeline,
@@ -34,23 +34,18 @@ pub enum Control {
 
 pub struct Game {
     data: Data,
-    cam: FpCamera,
-    delta: Vec3,
+    cam: TpCamera,
 }
 
 impl Game {
-    #[allow(clippy::new_without_default)]
     pub fn new(data: Data) -> Self {
         Self {
             data,
-            cam: FpCamera::new(),
-            delta: Vec3::zero(),
+            cam: TpCamera::new(1., Pnt3::origin()),
         }
     }
 
     pub fn draw(&mut self, ren: &mut Render, delta: f32) {
-        self.cam.move_to(self.delta * delta);
-        self.delta = Vec3::zero();
         ren.set_proj(self.cam.proj(1.));
         ren.set_view(self.cam.view());
         ren.draw([&self.data as &dyn Pipe])
@@ -61,11 +56,8 @@ impl Game {
 
         match control {
             Control::Look(x, y) => self.cam.rotate(Vec2::new(x, y) * SENSITIVITY),
-            Control::Scroll(..) => {}
-            Control::Forward => self.delta.z += 1.,
-            Control::Back => self.delta.z -= 1.,
-            Control::Left => self.delta.x -= 1.,
-            Control::Right => self.delta.x += 1.,
+            Control::Scroll(_, y) => self.cam.move_to(y),
+            _ => {}
         }
     }
 }

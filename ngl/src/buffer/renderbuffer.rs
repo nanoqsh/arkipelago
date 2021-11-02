@@ -5,34 +5,55 @@ use std::rc::Rc;
 pub(crate) struct Renderbuffer {
     nat: NativeRenderbuffer,
     ctx: Rc<Context>,
+    typ: Type,
 }
 
 impl Renderbuffer {
-    pub fn new(ctx: Rc<Context>, size: UVec2, format: Format) -> Self {
+    pub fn new(ctx: Rc<Context>, size: UVec2, params: Parameters) -> Self {
+        let Parameters { typ, format } = params;
+
         unsafe {
             let nat = ctx.create_renderbuffer().expect("create renderbuffer");
-            Self::make(&ctx, nat, size, format);
+            Self::make(&ctx, nat, size, typ, format);
 
-            Self { nat, ctx }
+            Self { nat, ctx, typ }
         }
-    }
-
-    pub fn resize(&mut self, size: UVec2, format: Format) {
-        Self::make(&self.ctx, self.nat, size, format)
     }
 
     pub(crate) fn nat(&self) -> NativeRenderbuffer {
         self.nat
     }
 
-    fn make(ctx: &Context, nat: NativeRenderbuffer, size: UVec2, format: Format) {
+    pub fn resize(&mut self, size: UVec2, format: Format) {
+        Self::make(&self.ctx, self.nat, size, self.typ, format)
+    }
+
+    fn make(ctx: &Context, nat: NativeRenderbuffer, size: UVec2, typ: Type, format: Format) {
         let (width, height) = size.into();
         assert!(width <= glow::MAX_RENDERBUFFER_SIZE);
         assert!(height <= glow::MAX_RENDERBUFFER_SIZE);
 
         unsafe {
             ctx.bind_renderbuffer(glow::RENDERBUFFER, Some(nat));
-            ctx.renderbuffer_storage(glow::RENDERBUFFER, format.gl(), width as _, height as _)
+            match typ {
+                Type::Common => ctx.renderbuffer_storage(
+                    glow::RENDERBUFFER,
+                    format.gl(),
+                    width as _,
+                    height as _,
+                ),
+                Type::Multisample(samples) => ctx.renderbuffer_storage_multisample(
+                    glow::RENDERBUFFER,
+                    {
+                        assert_ne!(samples, 0);
+                        assert!(samples as u32 <= glow::MAX_INTEGER_SAMPLES);
+                        samples as _
+                    },
+                    format.gl(),
+                    width as _,
+                    height as _,
+                ),
+            }
         }
     }
 }
@@ -41,6 +62,18 @@ impl Drop for Renderbuffer {
     fn drop(&mut self) {
         unsafe { self.ctx.delete_renderbuffer(self.nat) }
     }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) struct Parameters {
+    pub typ: Type,
+    pub format: Format,
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum Type {
+    Common,
+    Multisample(u8),
 }
 
 #[derive(Copy, Clone)]

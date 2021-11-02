@@ -1,8 +1,7 @@
 use crate::{
     buffer::{
-        renderbuffer,
         texture::{self, Texture},
-        Attachments, Framebuffer,
+        Frame,
     },
     debug::{debug_gl, Debugger},
     line::Line,
@@ -19,7 +18,7 @@ use std::rc::Rc;
 
 pub struct Render {
     shaders: Shaders,
-    framebuffer: Framebuffer,
+    frame: Frame,
     pipeline: Pipeline<'static>,
     line: Line,
     quad: Quad,
@@ -38,36 +37,9 @@ impl Render {
     {
         let ctx = Rc::new(Context::from_loader_function(|s| load(s).cast()));
 
-        let deb = Debugger::new(Rc::clone(&ctx));
-        debug_gl!(deb);
-
-        let _framebuffer = {
-            Framebuffer::new(
-                Rc::clone(&ctx),
-                Attachments {
-                    renderbuffer: Some(renderbuffer::Format::Depth24),
-                    textures: &[texture::Format::Rgb],
-                },
-                UVec2::new(1, 1),
-            )
-        };
-        debug_gl!(deb);
-
-        let _quad = Quad::new(Rc::clone(&ctx));
-        debug_gl!(deb);
-
         Self {
             shaders: Shaders::new(Rc::clone(&ctx)),
-            framebuffer: {
-                Framebuffer::new(
-                    Rc::clone(&ctx),
-                    Attachments {
-                        renderbuffer: Some(renderbuffer::Format::Depth24),
-                        textures: &[texture::Format::Rgb],
-                    },
-                    UVec2::new(1, 1),
-                )
-            },
+            frame: Frame::new(Rc::clone(&ctx), UVec2::new(1, 1), 0),
             pipeline: Pipeline::default(),
             line: Line::new(Rc::clone(&ctx)),
             quad: Quad::new(Rc::clone(&ctx)),
@@ -90,7 +62,7 @@ impl Render {
         };
 
         unsafe { self.ctx.viewport(0, 0, width as _, height as _) }
-        self.framebuffer.resize(size);
+        self.frame.resize(size);
 
         debug_gl!(self.deb);
     }
@@ -114,7 +86,7 @@ impl Render {
         let Parameters { cl, view, proj } = params;
         let pipeline = std::mem::take(&mut self.pipeline).filled(draws);
 
-        self.framebuffer.bind();
+        self.frame.bind();
         unsafe {
             let (r, g, b) = cl.into();
             self.ctx.clear_color(r, g, b, 1.);
@@ -159,8 +131,8 @@ impl Render {
         pipeline.draw_color(inner);
         debug_gl!(self.deb);
 
-        self.framebuffer.bind_default();
-        let frame = self.framebuffer.texture(0).unwrap();
+        self.frame.bind_default();
+        let frame = self.frame.texture(0).unwrap();
         frame.bind(Shaders::T0);
         self.shaders.post.use_program();
         self.quad.draw(
