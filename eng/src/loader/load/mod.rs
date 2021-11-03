@@ -5,4 +5,10 @@ mod texture;
 mod this;
 mod tile;
 
-pub(crate) use self::{mesh::MeshLoad, sprite::SpriteLoad, texture::TextureLoad, this::Load};
+pub(crate) use self::{
+    mesh::MeshLoad,
+    sample::{Sample, SampleLoad},
+    sprite::SpriteLoad,
+    texture::TextureLoad,
+    this::Load,
+};

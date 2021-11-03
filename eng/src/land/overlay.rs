@@ -1,7 +1,14 @@
 use crate::land::polygon::Polygon;
 
+#[derive(Copy, Clone)]
 pub(crate) enum Overlay {
     None,
-    Empty,
-    Polygon(Polygon),
+    Full,
+    Polygon(&'static Polygon),
+}
+
+impl Default for Overlay {
+    fn default() -> Self {
+        Self::None
+    }
 }

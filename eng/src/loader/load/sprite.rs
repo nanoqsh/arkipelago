@@ -3,7 +3,7 @@ use image::DynamicImage;
 
 pub(crate) struct SpriteLoad;
 
-impl<'a> Load<'a> for SpriteLoad {
+impl Load<'_> for SpriteLoad {
     const PATH: &'static str = "textures";
     type Format = Png;
     type Asset = DynamicImage;

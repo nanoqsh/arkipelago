@@ -5,7 +5,7 @@ pub(crate) struct TextureLoad<'a> {
     pub ren: &'a Render,
 }
 
-impl<'a> Load<'a> for TextureLoad<'a> {
+impl Load<'_> for TextureLoad<'_> {
     const PATH: &'static str = "textures";
     type Format = Png;
     type Asset = Texture;

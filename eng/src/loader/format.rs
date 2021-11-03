@@ -26,7 +26,7 @@ impl<'a, T> Json<'a, T> {
 
 impl<'a, T> Format for Json<'a, T>
 where
-    T: Deserialize<'a> + 'a,
+    T: Deserialize<'a>,
 {
     const EXT: &'static str = "json";
     type Raw = T;

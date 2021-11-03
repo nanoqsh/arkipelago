@@ -1,6 +1,7 @@
 mod cached;
 mod format;
 mod load;
+mod reader;
 mod this;
 
 mod re {
