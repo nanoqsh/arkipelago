@@ -68,6 +68,14 @@ impl PartialEq for Polygon {
     }
 }
 
+impl TryFrom<Box<[Point]>> for Polygon {
+    type Error = Error;
+
+    fn try_from(points: Box<[Point]>) -> Result<Self, Self::Error> {
+        Self::new(points)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Flipped<'a>(&'a Polygon);
 
@@ -80,14 +88,6 @@ impl PartialEq<Flipped<'_>> for Polygon {
             .rev()
             .copied()
             .map(|(x, y)| (1. - x, y)))
-    }
-}
-
-impl TryFrom<Box<[Point]>> for Polygon {
-    type Error = Error;
-
-    fn try_from(points: Box<[Point]>) -> Result<Self, Self::Error> {
-        Self::new(points)
     }
 }
 
@@ -132,5 +132,10 @@ mod tests {
         let b = Polygon::new([(0.5, 0.5), (1., 1.), (1., 0.)]).unwrap();
         assert_eq!(a, b.flipped());
         assert_eq!(b, a.flipped());
+
+        let a = Polygon::new([(0., 0.), (0., 1.), (1., 1.), (1., 0.)]).unwrap();
+        let b = Polygon::new([(0., 0.), (0., 1.), (1., 1.), (1., 0.)]).unwrap();
+        assert_eq!(a, b);
+        assert_eq!(a, b.flipped());
     }
 }
