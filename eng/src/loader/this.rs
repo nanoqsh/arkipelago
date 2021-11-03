@@ -4,8 +4,7 @@ use crate::{
         load::{MeshLoad, SpriteLoad, TextureLoad},
         re::*,
     },
-    mesh::Mesh,
-    render::*,
+    Mesh, Render, Texture,
 };
 use image::DynamicImage;
 use std::{path::PathBuf, rc::Rc};
@@ -14,7 +13,7 @@ pub(crate) struct Loader<'a> {
     ren: &'a Render,
     path: PathBuf,
     buf: String,
-    meshes: Cached<'a, Mesh<Vert>>,
+    meshes: Cached<'a, Mesh>,
     textures: Cached<'a, Texture>,
     sprites: Cached<'a, DynamicImage>,
 }
@@ -31,7 +30,7 @@ impl<'a> Loader<'a> {
         }
     }
 
-    pub fn load_mesh<S>(&mut self, name: S) -> Result<Rc<Mesh<Vert>>, Error>
+    pub fn load_mesh<S>(&mut self, name: S) -> Result<Rc<Mesh>, Error>
     where
         S: Into<String>,
     {
@@ -59,7 +58,7 @@ impl<'a> Loader<'a> {
 
     pub fn on_load_mesh<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<Mesh<Vert>>) + 'a,
+        F: FnMut(&str, Rc<Mesh>) + 'a,
     {
         self.meshes.on_load(Box::new(event))
     }

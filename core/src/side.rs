@@ -21,7 +21,7 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-#[derive(Debug, Deserialize, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Copy, Clone, Eq, Hash, PartialEq)]
 #[serde(try_from = "&str")]
 pub enum Side {
     Left = 0,
@@ -172,7 +172,7 @@ where
     }
 }
 
-#[derive(Default, Deserialize, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Deserialize, Copy, Clone, Eq, Hash, PartialEq)]
 #[serde(try_from = "&str")]
 pub struct Sides(u8);
 

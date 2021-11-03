@@ -1,4 +1,4 @@
-use crate::{atlas::Atlas, camera::TpCamera, loader::Loader, render::*};
+use crate::{atlas::Atlas, camera::TpCamera, loader::Loader, Render, Texture, Vert};
 use image::{DynamicImage, GenericImageView};
 use ngl::{
     mesh::Indexed,

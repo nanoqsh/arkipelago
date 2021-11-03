@@ -1,29 +1,16 @@
 use crate::{
     loader::re::*,
-    mesh::{self, Mesh, Slot},
-    render::Vert,
+    mesh::{self, Slots},
+    Mesh, Vert,
 };
 use std::collections::HashMap;
 
-pub(crate) struct MeshLoad;
-
-impl<'a> Load<'a> for MeshLoad {
-    const PATH: &'static str = "meshes";
-    type Format = Json<'a, RawMesh<'a>>;
-    type Asset = Mesh<Vert>;
-
-    fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
-        let mesh = load(raw)?;
-        Ok(mesh)
-    }
-}
-
 #[derive(Deserialize)]
-pub(crate) struct RawMesh<'s> {
+pub(crate) struct RawMesh {
     verts: Vec<RawVertex>,
     indxs: Vec<u32>,
-    #[serde(default, borrow)]
-    slots: HashMap<&'s str, Box<[u32]>>,
+    #[serde(default)]
+    slots: HashMap<String, Box<[u32]>>,
 }
 
 #[derive(Deserialize)]
@@ -33,7 +20,7 @@ struct RawVertex {
     t: [f32; 2],
 }
 
-fn load(mesh: RawMesh) -> Result<Mesh<Vert>, mesh::Error> {
+fn load(mesh: RawMesh) -> Result<Mesh, mesh::Error> {
     let RawMesh {
         verts,
         indxs,
@@ -50,9 +37,19 @@ fn load(mesh: RawMesh) -> Result<Mesh<Vert>, mesh::Error> {
             })
             .collect(),
         indxs,
-        slots
-            .into_iter()
-            .map(|(_, face_indxs)| Slot(face_indxs))
-            .collect(),
+        Slots::new(slots),
     )
+}
+
+pub(crate) struct MeshLoad;
+
+impl<'a> Load<'a> for MeshLoad {
+    const PATH: &'static str = "meshes";
+    type Format = Json<'a, RawMesh>;
+    type Asset = Mesh;
+
+    fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
+        let mesh = load(raw)?;
+        Ok(mesh)
+    }
 }

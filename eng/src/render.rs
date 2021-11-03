@@ -1,10 +1,11 @@
-use crate::mesh::Mesh;
+use crate::{
+    mesh::{Key, Mesh},
+    Texture, Vert,
+};
 use ngl::{mesh::Indexed, texture, Parameters, Pipe};
 use shr::cgm::*;
 
 type Ren = ngl::Render;
-pub type Vert = ngl::vertex::Vertex;
-pub type Texture = ngl::texture::Texture;
 
 pub struct Render {
     ren: Ren,
@@ -45,7 +46,10 @@ impl Render {
         self.ren.make_texture(data, size, params)
     }
 
-    pub fn make_mesh(&self, mesh: &Mesh<Vert>) -> Indexed<Vert> {
+    pub fn make_mesh<K>(&self, mesh: &Mesh<Vert, K>) -> Indexed<Vert>
+    where
+        K: Key + ?Sized,
+    {
         self.ren.make_indexed_mesh(mesh.verts(), mesh.indxs())
     }
 

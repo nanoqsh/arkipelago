@@ -1,7 +1,4 @@
-use crate::{
-    loader::re::*,
-    render::{Render, Texture},
-};
+use crate::{loader::re::*, Render, Texture};
 use image::{DynamicImage, GenericImageView};
 
 pub(crate) struct TextureLoad<'a> {

@@ -1,6 +1,4 @@
-use std::{error, fmt};
-
-pub struct Slot(pub Box<[u32]>);
+use std::{collections::HashMap, error, fmt};
 
 #[derive(Debug)]
 pub enum Error {
@@ -21,18 +19,115 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
-pub struct Mesh<V> {
-    verts: Vec<V>,
-    indxs: Vec<u32>,
-    slots: Vec<Slot>,
+pub trait Key {
+    type Keys;
 }
 
-impl<V> Mesh<V> {
-    pub fn new(verts: Vec<V>, indxs: Vec<u32>) -> Result<Self, Error> {
-        Self::from_slots(verts, indxs, Vec::default())
+impl Key for u32 {
+    type Keys = ();
+}
+
+impl Key for str {
+    type Keys = HashMap<String, u32>;
+}
+
+pub struct Slots<K>
+where
+    K: Key + ?Sized,
+{
+    keys: K::Keys,
+    slots: Vec<Box<[u32]>>,
+}
+
+impl<K> Slots<K>
+where
+    K: Key + ?Sized,
+{
+    pub fn faces(&self, idx: u32) -> Option<&[u32]> {
+        self.slots.get(idx as usize).map(|slot| &slot[..])
     }
 
-    pub fn from_slots(verts: Vec<V>, indxs: Vec<u32>, slots: Vec<Slot>) -> Result<Self, Error> {
+    pub fn face_indices(&self) -> impl Iterator<Item = u32> + '_ {
+        self.slots.iter().map(|slot| slot.iter().copied()).flatten()
+    }
+
+    pub fn faces_max_len(&self) -> usize {
+        self.slots.iter().map(|slot| slot.len()).sum()
+    }
+
+    pub fn slots_for(&self, face_idx: u32) -> impl Iterator<Item = u32> + '_ {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter(move |(_, slot)| slot.contains(&face_idx))
+            .map(|(idx, _)| idx as u32)
+    }
+}
+
+impl Slots<str> {
+    pub fn new<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (String, Box<[u32]>)>,
+    {
+        let (keys, slots) = iter
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (key, slot))| ((key, idx as u32), slot))
+            .unzip();
+
+        Self { keys, slots }
+    }
+
+    pub fn index(&self, key: &str) -> Option<u32> {
+        self.keys.get(key).copied()
+    }
+}
+
+impl<K> Default for Slots<K>
+where
+    K: Key + ?Sized,
+    K::Keys: Default,
+{
+    fn default() -> Self {
+        Self {
+            keys: Default::default(),
+            slots: Vec::default(),
+        }
+    }
+}
+
+impl<K> std::ops::Deref for Slots<K>
+where
+    K: Key + ?Sized,
+{
+    type Target = [Box<[u32]>];
+
+    fn deref(&self) -> &Self::Target {
+        &self.slots
+    }
+}
+
+pub struct Mesh<V, K>
+where
+    K: Key + ?Sized,
+{
+    verts: Vec<V>,
+    indxs: Vec<u32>,
+    slots: Slots<K>,
+}
+
+impl<V, K> Mesh<V, K>
+where
+    K: Key + ?Sized,
+{
+    pub fn new(verts: Vec<V>, indxs: Vec<u32>) -> Result<Self, Error>
+    where
+        K::Keys: Default,
+    {
+        Self::from_slots(verts, indxs, Slots::default())
+    }
+
+    pub fn from_slots(verts: Vec<V>, indxs: Vec<u32>, slots: Slots<K>) -> Result<Self, Error> {
         // Vertices len must be a multiple of 3
         if indxs.len() % 3 != 0 {
             return Err(Error::IndxsLen(indxs.len()));
@@ -45,18 +140,17 @@ impl<V> Mesh<V> {
 
         // Check each slot points to face
         let faces_len = indxs.len() / 3;
-        if let Some(&face_idx) = slots.iter().find_map(|slot| {
-            slot.0
-                .iter()
-                .find(|&face_idx| *face_idx as usize >= faces_len)
-        }) {
+        if let Some(face_idx) = slots
+            .face_indices()
+            .find(|&face_idx| face_idx as usize >= faces_len)
+        {
             return Err(Error::FaceIndex(face_idx));
         }
 
         Ok(Self::new_unchecked(verts, indxs, slots))
     }
 
-    pub fn new_unchecked(verts: Vec<V>, indxs: Vec<u32>, slots: Vec<Slot>) -> Self {
+    pub fn new_unchecked(verts: Vec<V>, indxs: Vec<u32>, slots: Slots<K>) -> Self {
         Self {
             verts,
             indxs,
@@ -72,7 +166,20 @@ impl<V> Mesh<V> {
         &self.indxs
     }
 
-    pub fn slots(&self) -> &[Slot] {
+    pub fn slots(&self) -> &Slots<K> {
         &self.slots
+    }
+}
+
+impl<V> From<Mesh<V, str>> for Mesh<V, u32> {
+    fn from(mesh: Mesh<V, str>) -> Self {
+        Self {
+            verts: mesh.verts,
+            indxs: mesh.indxs,
+            slots: Slots {
+                keys: (),
+                slots: mesh.slots.slots,
+            },
+        }
     }
 }
