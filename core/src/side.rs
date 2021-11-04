@@ -302,7 +302,7 @@ impl Iterator for Sides {
     type Item = Side;
 
     fn next(&mut self) -> Option<Self::Item> {
-        for side in Self::ALL {
+        for side in Side::ENUM {
             if self.contains(side) {
                 self.remove(side);
                 return Some(side);

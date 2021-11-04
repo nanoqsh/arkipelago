@@ -76,6 +76,7 @@ impl Game {
 
         loader.load_sprite("tiles/stone").unwrap();
         loader.load_sprite("tiles/dirt").unwrap();
+        loader.load_sample("cube").unwrap();
         drop(loader);
 
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();

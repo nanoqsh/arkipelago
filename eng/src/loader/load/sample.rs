@@ -1,6 +1,6 @@
 use crate::{
     land::{polygon::Polygon, Overlay},
-    loader::re::*,
+    loader::{load::MeshLoad, re::*, reader::Reader},
     Mesh,
 };
 use core::prelude::*;
@@ -112,14 +112,16 @@ where
     Ok(Sample(slabs?))
 }
 
-pub(crate) struct SampleLoad;
+pub(crate) struct SampleLoad<'a, 'b> {
+    pub meshes: &'a mut Reader<'b, Mesh, String>,
+}
 
-impl<'a> Load<'a> for SampleLoad {
+impl<'a> Load<'a> for SampleLoad<'a, '_> {
     const PATH: &'static str = "samples";
     type Format = Json<'a, RawSample<'a>>;
     type Asset = Sample;
 
     fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
-        todo!()
+        load(raw, |name| self.meshes.read_json(name, MeshLoad))
     }
 }

@@ -1,4 +1,3 @@
-mod cached;
 mod format;
 mod load;
 mod reader;
