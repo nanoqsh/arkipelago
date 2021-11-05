@@ -1,5 +1,5 @@
 use crate::{atlas::Atlas, camera::TpCamera, land::Factory, loader::Loader, Render, Texture, Vert};
-use image::{DynamicImage, GenericImageView};
+use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
     pass::{Pass, Solid, Stage},
@@ -52,11 +52,9 @@ impl Game {
         let mut loader = Loader::new(ren);
 
         loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
-            let (width, height) = sprite.dimensions();
-            println!("Loaded sprite {} (size: ({}, {}))", name, width, height);
-
+            let (_, name) = name.split_once('/').unwrap();
             if sprites.is_empty() {
-                debug_assert_eq!(name, "tiles/default")
+                debug_assert_eq!(name, "default")
             }
 
             assert!(sprite_names
@@ -68,8 +66,6 @@ impl Game {
         loader.on_load_mesh(|_, _| ());
 
         loader.load_sprite("tiles/default").unwrap();
-        loader.load_sprite("tiles/stone").unwrap();
-        loader.load_sprite("tiles/dirt").unwrap();
 
         let mesh = loader.load_mesh("cube").unwrap();
         let cube = ren.make_mesh(&mesh);
@@ -82,7 +78,20 @@ impl Game {
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
         let (_, mapper) = atlas.map();
 
-        let _ = Factory::new(mapper);
+        let mut factory = Factory::new(mapper);
+
+        let grass = grass
+            .to_variant(&mut factory, |sprite| {
+                let idx = match sprite {
+                    None => 0,
+                    Some(name) => match sprite_names.get(name) {
+                        None => panic!("sprite {} not found", name),
+                        Some(&idx) => idx,
+                    },
+                };
+                mapper.addition(idx) * mapper.multiplier()
+            })
+            .unwrap();
 
         Self {
             data: Data {

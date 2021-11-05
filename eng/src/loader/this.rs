@@ -48,6 +48,7 @@ impl<'a> Loader<'a> {
         self.variants.read_json(
             name,
             VariantLoad {
+                sprites: &mut self.sprites,
                 meshes: &mut self.meshes,
                 samples: &mut self.samples,
             },

@@ -50,9 +50,9 @@ pub(crate) struct RawSlab<'a> {
 
 type RawSample<'a> = Vec<RawSlab<'a>>;
 
-struct ToShape {
-    mesh: Rc<Mesh>,
-    contact: HashMap<String, Sides>,
+pub(crate) struct ToShape {
+    pub mesh: Rc<Mesh>,
+    pub contact: HashMap<String, Sides>,
 }
 
 struct Slab {
@@ -63,6 +63,10 @@ struct Slab {
 pub(crate) struct Sample(Vec<Slab>);
 
 impl Sample {
+    pub fn shapes(&self) -> impl Iterator<Item = Option<&ToShape>> {
+        self.0.iter().map(|slab| slab.shape.as_ref())
+    }
+
     pub fn meshes(&self) -> impl Iterator<Item = &Mesh> + '_ {
         self.0
             .iter()

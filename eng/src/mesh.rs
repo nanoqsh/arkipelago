@@ -78,6 +78,17 @@ impl Slots<str> {
         self.keys.iter().map(|(k, v)| (k.as_str(), *v))
     }
 
+    pub fn ordered_keys(&self) -> impl Iterator<Item = &str> {
+        self.slots.iter().enumerate().map(|(target, _)| {
+            self.keys
+                .iter()
+                .find(|(_, &idx)| idx == target as u32)
+                .unwrap()
+                .0
+                .as_str()
+        })
+    }
+
     pub fn for_face(&self, face: u32) -> Option<(&str, u32)> {
         self.values()
             .find(|(_, slot_idx)| self[*slot_idx as usize].contains(&face))

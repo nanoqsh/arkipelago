@@ -1,14 +1,21 @@
 use crate::{
+    land::{
+        variant::{self, Slab, Variant},
+        Factory, Parameters,
+    },
     loader::{
-        load::{Sample, SampleLoad},
+        load::{Sample, SampleLoad, SpriteLoad},
         re::*,
         reader::Reader,
     },
     Mesh,
 };
 use core::prelude::*;
+use image::DynamicImage;
 use serde::Deserialize;
+use shr::cgm::Vec2;
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     error, fmt,
     rc::Rc,
@@ -73,9 +80,57 @@ pub(crate) struct ToVariant {
     sprite: Option<String>,
 }
 
-fn load<S>(variant: RawVariant, mut load_sample: S) -> Result<ToVariant, Error>
+impl ToVariant {
+    pub fn to_variant<S>(&self, factory: &mut Factory, st: S) -> Result<Variant, variant::Error>
+    where
+        S: Fn(Option<&str>) -> Vec2,
+    {
+        let factory = RefCell::new(factory);
+        Variant::new(
+            self.samples.iter().flat_map(|info| {
+                info.sample.shapes().map(|shape| match shape {
+                    None => Slab::Empty,
+                    Some(shape) => Slab::Mesh {
+                        shape: factory.borrow_mut().make(Parameters {
+                            mesh: &shape.mesh,
+                            rotation: info.rotation,
+                            discard: &info.discard,
+                            contact: &shape.contact,
+                        }),
+                        sprites_st: info
+                            .sprites
+                            .as_ref()
+                            .map(|sprites| match sprites {
+                                Sprites::One(sprite) => {
+                                    let st = st(Some(sprite));
+                                    std::iter::repeat(st)
+                                        .take(shape.mesh.slots().len())
+                                        .collect()
+                                }
+                                Sprites::Many(map) => shape
+                                    .mesh
+                                    .slots()
+                                    .ordered_keys()
+                                    .map(|key| st(map.get(key).map(String::as_str)))
+                                    .collect(),
+                            })
+                            .unwrap_or_default(),
+                    },
+                })
+            }),
+            st(self.sprite.as_deref()),
+        )
+    }
+}
+
+fn load<S, T>(
+    variant: RawVariant,
+    mut load_sprite: S,
+    mut load_sample: T,
+) -> Result<ToVariant, Error>
 where
-    S: FnMut(&str) -> Result<Rc<Sample>, Error>,
+    S: FnMut(&str) -> Result<Rc<DynamicImage>, Error>,
+    T: FnMut(&str) -> Result<Rc<Sample>, Error>,
 {
     if variant.samples.is_empty() {
         return Err(VariantError::Empty.into());
@@ -100,6 +155,19 @@ where
                 ),
             };
 
+            if let Some(sprites) = &sprites {
+                match sprites {
+                    Sprites::One(sprite) => {
+                        let _ = load_sprite(sprite);
+                    }
+                    Sprites::Many(map) => {
+                        for sprite in map.values() {
+                            let _ = load_sprite(sprite);
+                        }
+                    }
+                }
+            }
+
             load_sample(name).and_then(|sample| {
                 for slot in &discard {
                     sample
@@ -118,6 +186,10 @@ where
         })
         .collect();
 
+    if let Some(sprite) = &variant.sprite {
+        let _ = load_sprite(sprite);
+    }
+
     Ok(ToVariant {
         samples: samples?,
         sprite: variant.sprite,
@@ -125,6 +197,7 @@ where
 }
 
 pub(crate) struct VariantLoad<'a, 'b> {
+    pub sprites: &'a mut Reader<'b, DynamicImage>,
     pub meshes: &'a mut Reader<'b, Mesh, String>,
     pub samples: &'a mut Reader<'b, Sample, String>,
 }
@@ -135,13 +208,25 @@ impl<'a> Load<'a> for VariantLoad<'a, '_> {
     type Asset = ToVariant;
 
     fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
-        load(raw, |name| {
-            self.samples.read_json(
-                name,
-                SampleLoad {
-                    meshes: self.meshes,
-                },
-            )
-        })
+        const PREFIX: &str = "tiles/";
+        let mut prefix = String::with_capacity(16);
+
+        load(
+            raw,
+            |name| {
+                prefix.clear();
+                prefix.push_str(PREFIX);
+                prefix.push_str(name);
+                self.sprites.read_png(&prefix, SpriteLoad)
+            },
+            |name| {
+                self.samples.read_json(
+                    name,
+                    SampleLoad {
+                        meshes: self.meshes,
+                    },
+                )
+            },
+        )
     }
 }

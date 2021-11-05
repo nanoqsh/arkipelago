@@ -1,14 +1,15 @@
 use crate::{atlas::Mapper, land::shape::Shape, Mesh};
 use core::prelude::*;
 use std::{
-    collections::{hash_map::Entry, BTreeSet, HashMap},
+    collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
     rc::Rc,
 };
 
-pub(crate) struct Parameters<'a, C> {
+pub(crate) struct Parameters<'a> {
     pub mesh: &'a Mesh,
     pub rotation: Rotation,
-    pub contact: C,
+    pub discard: &'a HashSet<String>,
+    pub contact: &'a HashMap<String, Sides>,
 }
 
 #[derive(Eq, Hash, PartialEq)]
@@ -30,13 +31,11 @@ impl Factory {
         }
     }
 
-    pub fn make<C>(&mut self, params: Parameters<C>) -> Rc<Shape>
-    where
-        C: Fn(&str) -> Option<Sides>,
-    {
+    pub fn make(&mut self, params: Parameters) -> Rc<Shape> {
         let Parameters {
             mesh,
             rotation,
+            discard,
             contact,
         } = params;
 
@@ -45,14 +44,25 @@ impl Factory {
             discard: mesh
                 .slots()
                 .values()
-                .filter_map(|(slot, index)| contact(slot).is_none().then(|| index))
+                .filter_map(|(slot, index)| discard.contains(slot).then(|| index))
                 .collect(),
         };
 
         match self.shapes.entry(key) {
             Entry::Occupied(en) => Rc::clone(en.get()),
             Entry::Vacant(en) => {
-                let shape = Shape::new(mesh, rotation, contact, |st| st * self.mapper.multiplier());
+                let shape = Shape::new(
+                    mesh,
+                    rotation,
+                    |slot| {
+                        if discard.contains(slot) {
+                            None
+                        } else {
+                            contact.get(slot).copied()
+                        }
+                    },
+                    |st| st * self.mapper.multiplier(),
+                );
                 Rc::clone(en.insert(Rc::new(shape)))
             }
         }
