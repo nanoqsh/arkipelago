@@ -5,7 +5,7 @@ use crate::{
 };
 use core::prelude::*;
 use serde::Deserialize;
-use std::{collections::HashMap, fmt, rc::Rc};
+use std::{collections::HashMap, error, fmt, rc::Rc};
 
 #[derive(Debug)]
 enum SampleError {
@@ -20,7 +20,7 @@ impl fmt::Display for SampleError {
     }
 }
 
-impl std::error::Error for SampleError {}
+impl error::Error for SampleError {}
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -60,7 +60,7 @@ struct Slab {
     overlay: [Overlay; 6],
 }
 
-pub struct Sample(Box<[Slab]>);
+pub(crate) struct Sample(Vec<Slab>);
 
 impl Sample {
     pub fn meshes(&self) -> impl Iterator<Item = &Mesh> + '_ {

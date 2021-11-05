@@ -1,6 +1,10 @@
 mod overlay;
 pub(crate) mod polygon;
 mod shape;
-mod variant;
+mod shape_factory;
+pub(crate) mod variant;
 
-pub(crate) use self::overlay::Overlay;
+pub(crate) use self::{
+    overlay::Overlay,
+    shape_factory::{Factory, Parameters},
+};

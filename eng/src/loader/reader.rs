@@ -37,8 +37,7 @@ impl<'a, A> Cached<'a, A> {
                     event(key, Rc::clone(&rc));
                 }
 
-                en.insert(Rc::clone(&rc));
-                Ok(rc)
+                Ok(Rc::clone(en.insert(rc)))
             }
         }
     }
@@ -61,6 +60,10 @@ impl<'a, A, B> Reader<'a, A, B> {
 
     pub fn on_load(&mut self, event: Event<'a, A>) {
         self.cached.on_load = Some(event)
+    }
+
+    pub fn take(&mut self) -> HashMap<String, Rc<A>> {
+        std::mem::take(&mut self.cached.loaded)
     }
 
     fn read<'l, L>(

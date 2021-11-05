@@ -7,7 +7,7 @@ use crate::{
     Mesh, Render, Texture,
 };
 use image::DynamicImage;
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
 
 pub(crate) struct Loader<'a> {
     ren: &'a Render,
@@ -73,5 +73,9 @@ impl<'a> Loader<'a> {
         F: FnMut(&str, Rc<Mesh>) + 'a,
     {
         self.meshes.on_load(Box::new(event))
+    }
+
+    pub fn take_samples(&mut self) -> HashMap<String, Rc<Sample>> {
+        self.samples.take()
     }
 }

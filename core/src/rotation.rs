@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use serde::Deserialize;
 use shr::cgm::Vec3;
-use std::fmt;
+use std::{error, fmt};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ParseError {
@@ -16,9 +16,9 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl std::error::Error for ParseError {}
+impl error::Error for ParseError {}
 
-#[derive(Deserialize, Copy, Clone, Eq, PartialEq)]
+#[derive(Deserialize, Copy, Clone, Eq, Hash, PartialEq)]
 #[serde(try_from = "u8")]
 pub enum Rotation {
     Q0 = 0,

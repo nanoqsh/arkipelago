@@ -54,14 +54,6 @@ where
     pub fn faces_max_len(&self) -> usize {
         self.slots.iter().map(|slot| slot.len()).sum()
     }
-
-    pub fn slots_for(&self, face_idx: u32) -> impl Iterator<Item = u32> + '_ {
-        self.slots
-            .iter()
-            .enumerate()
-            .filter(move |(_, slot)| slot.contains(&face_idx))
-            .map(|(idx, _)| idx as u32)
-    }
 }
 
 impl Slots<str> {
@@ -80,6 +72,15 @@ impl Slots<str> {
 
     pub fn index(&self, key: &str) -> Option<u32> {
         self.keys.get(key).copied()
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = (&str, u32)> + '_ {
+        self.keys.iter().map(|(k, v)| (k.as_str(), *v))
+    }
+
+    pub fn for_face(&self, face: u32) -> Option<(&str, u32)> {
+        self.values()
+            .find(|(_, slot_idx)| self[*slot_idx as usize].contains(&face))
     }
 }
 

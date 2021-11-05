@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use shr::cgm::*;
-use std::{fmt, str::FromStr};
+use std::{error, fmt, str::FromStr};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ParseError {
@@ -19,7 +19,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl std::error::Error for ParseError {}
+impl error::Error for ParseError {}
 
 #[derive(Debug, Deserialize, Copy, Clone, Eq, Hash, PartialEq)]
 #[serde(try_from = "&str")]

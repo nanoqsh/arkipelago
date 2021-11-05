@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::fmt;
+use std::{error, fmt};
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Error {
@@ -14,7 +14,7 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl error::Error for Error {}
 
 type Point = (f32, f32);
 

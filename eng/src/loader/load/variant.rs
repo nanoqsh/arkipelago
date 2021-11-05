@@ -8,10 +8,15 @@ use crate::{
 };
 use core::prelude::*;
 use serde::Deserialize;
-use std::{collections::HashMap, fmt, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    error, fmt,
+    rc::Rc,
+};
 
 #[derive(Debug)]
 enum VariantError {
+    Empty,
     Rotation(u8),
     Slot(String),
 }
@@ -19,13 +24,14 @@ enum VariantError {
 impl fmt::Display for VariantError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Empty => write!(f, "variant is empty"),
             Self::Rotation(rotation) => write!(f, "wrong rotation {}", rotation),
             Self::Slot(slot) => write!(f, "wrong slot {}", slot),
         }
     }
 }
 
-impl std::error::Error for VariantError {}
+impl error::Error for VariantError {}
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -43,7 +49,7 @@ enum RawSample<'a> {
         #[serde(default)]
         rotation: u8,
         #[serde(default)]
-        discard: Vec<String>,
+        discard: HashSet<String>,
         sprites: Option<Sprites>,
     },
 }
@@ -58,7 +64,7 @@ pub(crate) struct RawVariant<'a> {
 struct SampleInfo {
     sample: Rc<Sample>,
     rotation: Rotation,
-    discard: Vec<String>,
+    discard: HashSet<String>,
     sprites: Option<Sprites>,
 }
 
@@ -71,12 +77,16 @@ fn load<S>(variant: RawVariant, mut load_sample: S) -> Result<ToVariant, Error>
 where
     S: FnMut(&str) -> Result<Rc<Sample>, Error>,
 {
+    if variant.samples.is_empty() {
+        return Err(VariantError::Empty.into());
+    }
+
     let samples: Result<_, _> = variant
         .samples
         .into_iter()
         .map(|sample| -> Result<_, Error> {
             let (name, rotation, discard, sprites) = match sample {
-                RawSample::Name(name) => (name, Rotation::default(), Vec::default(), None),
+                RawSample::Name(name) => (name, Rotation::default(), HashSet::default(), None),
                 RawSample::Obj {
                     name,
                     rotation,

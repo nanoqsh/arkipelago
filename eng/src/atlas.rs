@@ -7,6 +7,7 @@ pub enum Error {
     NoSprites,
 }
 
+#[derive(Copy, Clone)]
 pub struct Mapper {
     size: u32,
     multiplier: f32,
@@ -20,13 +21,13 @@ impl Mapper {
         }
     }
 
-    pub fn addition(&self, sprite: u32) -> Vec2 {
+    pub fn addition(self, sprite: u32) -> Vec2 {
         let x = sprite % self.size;
         let y = sprite / self.size;
         Vec2::new(x as f32, y as f32)
     }
 
-    pub fn multiplier(&self) -> f32 {
+    pub fn multiplier(self) -> f32 {
         self.multiplier
     }
 }
@@ -137,15 +138,15 @@ mod tests {
         let sprites = [sprite(RED), sprite(GREEN), sprite(BLUE), sprite(WHITE)];
         let atlas = Atlas::new(&sprites).unwrap();
         let (_, mapper) = atlas.map();
-        let src = Vec2::new(1., 1.);
+        let src = Vec2::new(1., 1.) * mapper.multiplier();
 
-        let res = (src + mapper.addition(0)) * mapper.multiplier();
+        let res = src + mapper.addition(0) * mapper.multiplier();
         assert_eq!(res, Vec2::new(0.5, 0.5));
-        let res = (src + mapper.addition(1)) * mapper.multiplier();
+        let res = src + mapper.addition(1) * mapper.multiplier();
         assert_eq!(res, Vec2::new(1., 0.5));
-        let res = (src + mapper.addition(2)) * mapper.multiplier();
+        let res = src + mapper.addition(2) * mapper.multiplier();
         assert_eq!(res, Vec2::new(0.5, 1.));
-        let res = (src + mapper.addition(3)) * mapper.multiplier();
+        let res = src + mapper.addition(3) * mapper.multiplier();
         assert_eq!(res, Vec2::new(1., 1.));
     }
 

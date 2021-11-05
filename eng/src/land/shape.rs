@@ -1,12 +1,14 @@
 use crate::{Mesh, Vert};
 use core::prelude::*;
+use shr::cgm::Vec2;
 
 type Face = [u32; 3];
 
-struct Slotted {
-    face: Face,
-    slot: u32,
-    contact: Sides,
+#[derive(Copy, Clone)]
+pub(crate) struct Slotted {
+    pub face: Face,
+    pub slot: u32,
+    pub contact: Sides,
 }
 
 pub(crate) struct Shape {
@@ -16,9 +18,10 @@ pub(crate) struct Shape {
 }
 
 impl Shape {
-    pub fn new<C>(mesh: &Mesh, rotation: Rotation, contact: C) -> Self
+    pub fn new<C, S>(mesh: &Mesh, rotation: Rotation, contact: C, transform_st: S) -> Self
     where
-        C: Fn(u32) -> Option<Sides>,
+        C: Fn(&str) -> Option<Sides>,
+        S: Fn(Vec2) -> Vec2,
     {
         let slots = mesh.slots();
         let mut slotted = Vec::with_capacity(slots.faces_max_len());
@@ -29,16 +32,15 @@ impl Shape {
                 _ => unreachable!(),
             };
 
-            match slots.slots_for(idx as _).next() {
+            match slots.for_face(idx as _) {
                 None => free.push(face),
-                Some(slot) => {
-                    let slot = slot as _;
-                    if let Some(contact) = contact(slot) {
+                Some((slot_key, slot)) => {
+                    if let Some(contact) = contact(slot_key) {
                         slotted.push(Slotted {
                             face,
                             slot,
                             contact,
-                        });
+                        })
                     }
                 }
             }
@@ -51,11 +53,15 @@ impl Shape {
                 .map(|vert| Vert {
                     co: rotation.transform_vec(vert.co),
                     nm: rotation.transform_vec(vert.nm),
-                    st: vert.st,
+                    st: transform_st(vert.st),
                 })
                 .collect(),
             slotted: slotted.into_boxed_slice(),
             free: free.into_boxed_slice(),
         }
+    }
+
+    pub fn slotted(&self) -> impl Iterator<Item = Slotted> + '_ {
+        self.slotted.iter().copied()
     }
 }

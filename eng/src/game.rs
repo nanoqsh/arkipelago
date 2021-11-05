@@ -1,4 +1,4 @@
-use crate::{atlas::Atlas, camera::TpCamera, loader::Loader, Render, Texture, Vert};
+use crate::{atlas::Atlas, camera::TpCamera, land::Factory, loader::Loader, Render, Texture, Vert};
 use image::{DynamicImage, GenericImageView};
 use ngl::{
     mesh::Indexed,
@@ -6,7 +6,7 @@ use ngl::{
     Draw, Pipe, Pipeline,
 };
 use shr::cgm::*;
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 struct Data {
     pub mesh: Indexed<Vert>,
@@ -47,40 +47,42 @@ pub struct Game {
 
 impl Game {
     pub fn new(ren: &Render) -> Self {
+        let mut sprite_names = HashMap::new();
         let mut sprites = Vec::new();
         let mut loader = Loader::new(ren);
-        loader.on_load_mesh(|name, mesh| {
-            println!(
-                "Loaded mesh {} (indxs: {}, verts: {}, slots: {})",
-                name,
-                mesh.indxs().len(),
-                mesh.verts().len(),
-                mesh.slots().len(),
-            )
-        });
-
-        loader.on_load_texture(|name, tex| {
-            let (width, height) = tex.size().into();
-            println!("Loaded texture {} (size: ({}, {}))", name, width, height)
-        });
 
         loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
             let (width, height) = sprite.dimensions();
             println!("Loaded sprite {} (size: ({}, {}))", name, width, height);
+
+            if sprites.is_empty() {
+                debug_assert_eq!(name, "tiles/default")
+            }
+
+            assert!(sprite_names
+                .insert(name.to_string(), sprites.len() as u32)
+                .is_none());
             sprites.push(sprite);
         });
+        loader.on_load_texture(|_, _| ());
+        loader.on_load_mesh(|_, _| ());
+
+        loader.load_sprite("tiles/default").unwrap();
+        loader.load_sprite("tiles/stone").unwrap();
+        loader.load_sprite("tiles/dirt").unwrap();
 
         let mesh = loader.load_mesh("cube").unwrap();
         let cube = ren.make_mesh(&mesh);
         let stone = loader.load_texture("tiles/stone").unwrap();
 
-        loader.load_sprite("tiles/stone").unwrap();
-        loader.load_sprite("tiles/dirt").unwrap();
-        loader.load_variant("grass").unwrap();
+        let grass = loader.load_variant("grass").unwrap();
+        let samples = loader.take_samples();
         drop(loader);
 
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
-        let (_, _) = atlas.map();
+        let (_, mapper) = atlas.map();
+
+        let _ = Factory::new(mapper);
 
         Self {
             data: Data {
