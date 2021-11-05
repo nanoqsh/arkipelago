@@ -3,7 +3,7 @@ mod sample;
 mod sprite;
 mod texture;
 mod this;
-mod tile;
+mod variant;
 
 pub(crate) use self::{
     mesh::MeshLoad,
@@ -11,4 +11,5 @@ pub(crate) use self::{
     sprite::SpriteLoad,
     texture::TextureLoad,
     this::Load,
+    variant::{ToVariant, VariantLoad},
 };

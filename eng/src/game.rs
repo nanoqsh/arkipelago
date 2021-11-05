@@ -76,13 +76,11 @@ impl Game {
 
         loader.load_sprite("tiles/stone").unwrap();
         loader.load_sprite("tiles/dirt").unwrap();
-        loader.load_sample("cube").unwrap();
+        loader.load_variant("grass").unwrap();
         drop(loader);
 
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
-        let _ = atlas.map();
-        let _ = atlas.addition_fn();
-        let _ = atlas.multiplier();
+        let (_, _) = atlas.map();
 
         Self {
             data: Data {
@@ -93,7 +91,7 @@ impl Game {
         }
     }
 
-    pub fn draw(&mut self, ren: &mut Render, delta: f32) {
+    pub fn draw(&mut self, ren: &mut Render, _: f32) {
         ren.set_proj(self.cam.proj(1.));
         ren.set_view(self.cam.view());
         ren.draw([&self.data as &dyn Pipe])

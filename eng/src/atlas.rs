@@ -7,6 +7,30 @@ pub enum Error {
     NoSprites,
 }
 
+pub struct Mapper {
+    size: u32,
+    multiplier: f32,
+}
+
+impl Mapper {
+    fn new(size: u32) -> Self {
+        Self {
+            size,
+            multiplier: 1. / size as f32,
+        }
+    }
+
+    pub fn addition(&self, sprite: u32) -> Vec2 {
+        let x = sprite % self.size;
+        let y = sprite / self.size;
+        Vec2::new(x as f32, y as f32)
+    }
+
+    pub fn multiplier(&self) -> f32 {
+        self.multiplier
+    }
+}
+
 pub struct Atlas {
     map: DynamicImage,
     size: u32,
@@ -47,21 +71,8 @@ impl Atlas {
         Ok(Self { map, size })
     }
 
-    pub fn map(&self) -> &DynamicImage {
-        &self.map
-    }
-
-    pub fn addition_fn(&self) -> impl Fn(u32) -> Vec2 {
-        let size = self.size;
-        move |sprite| {
-            let x = sprite % size;
-            let y = sprite / size;
-            Vec2::new(x as f32, y as f32)
-        }
-    }
-
-    pub fn multiplier(&self) -> f32 {
-        1. / self.size as f32
+    pub fn map(self) -> (DynamicImage, Mapper) {
+        (self.map, Mapper::new(self.size))
     }
 }
 
@@ -89,7 +100,7 @@ mod tests {
         let sprites = [sprite(RED), sprite(GREEN), sprite(BLUE), sprite(WHITE)];
         let atlas = Atlas::new(&sprites).unwrap();
 
-        let map = atlas.map();
+        let (map, _) = atlas.map();
         assert_eq!(map.get_pixel(0, 0), Rgba(RED));
         assert_eq!(map.get_pixel(SIZE - 1, SIZE - 1), Rgba(RED));
         assert_eq!(map.get_pixel(SIZE, 0), Rgba(GREEN));
@@ -110,7 +121,7 @@ mod tests {
         ];
         let atlas = Atlas::new(&sprites).unwrap();
 
-        let map = atlas.map();
+        let (map, _) = atlas.map();
         assert_eq!(map.get_pixel(0, 0), Rgba(RED));
         assert_eq!(map.get_pixel(SIZE - 1, SIZE - 1), Rgba(RED));
         assert_eq!(map.get_pixel(SIZE, 0), Rgba(GREEN));
@@ -125,17 +136,16 @@ mod tests {
     fn map() {
         let sprites = [sprite(RED), sprite(GREEN), sprite(BLUE), sprite(WHITE)];
         let atlas = Atlas::new(&sprites).unwrap();
-        let addition = atlas.addition_fn();
-        let multiplier = atlas.multiplier();
+        let (_, mapper) = atlas.map();
         let src = Vec2::new(1., 1.);
 
-        let res = (src + addition(0)) * multiplier;
+        let res = (src + mapper.addition(0)) * mapper.multiplier();
         assert_eq!(res, Vec2::new(0.5, 0.5));
-        let res = (src + addition(1)) * multiplier;
+        let res = (src + mapper.addition(1)) * mapper.multiplier();
         assert_eq!(res, Vec2::new(1., 0.5));
-        let res = (src + addition(2)) * multiplier;
+        let res = (src + mapper.addition(2)) * mapper.multiplier();
         assert_eq!(res, Vec2::new(0.5, 1.));
-        let res = (src + addition(3)) * multiplier;
+        let res = (src + mapper.addition(3)) * mapper.multiplier();
         assert_eq!(res, Vec2::new(1., 1.));
     }
 

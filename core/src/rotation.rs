@@ -86,6 +86,12 @@ impl TryFrom<u8> for Rotation {
     }
 }
 
+impl Default for Rotation {
+    fn default() -> Self {
+        Self::Q0
+    }
+}
+
 impl fmt::Display for Rotation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(

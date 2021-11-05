@@ -29,8 +29,6 @@ enum RawMesh<'a> {
     Obj {
         name: &'a str,
         #[serde(default)]
-        rename: HashMap<&'a str, &'a str>,
-        #[serde(default)]
         contact: HashMap<String, Sides>,
     },
 }
@@ -64,6 +62,14 @@ struct Slab {
 
 pub struct Sample(Box<[Slab]>);
 
+impl Sample {
+    pub fn meshes(&self) -> impl Iterator<Item = &Mesh> + '_ {
+        self.0
+            .iter()
+            .filter_map(|slab| slab.shape.as_ref().map(|shape| Rc::as_ref(&shape.mesh)))
+    }
+}
+
 fn load<M>(sample: RawSample, mut load_mesh: M) -> Result<Sample, Error>
 where
     M: FnMut(&str) -> Result<Rc<Mesh>, Error>,
@@ -74,16 +80,11 @@ where
             let shape = slab
                 .mesh
                 .map(|mesh| {
-                    let (name, rename, contact) = match mesh {
-                        RawMesh::Name(name) => (name, HashMap::default(), HashMap::default()),
-                        RawMesh::Obj {
-                            name,
-                            rename,
-                            contact,
-                        } => (name, rename, contact),
+                    let (name, contact) = match mesh {
+                        RawMesh::Name(name) => (name, HashMap::default()),
+                        RawMesh::Obj { name, contact } => (name, contact),
                     };
 
-                    let _ = rename;
                     load_mesh(name).map(|mesh| ToShape { mesh, contact })
                 })
                 .transpose()?;

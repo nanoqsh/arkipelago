@@ -1,6 +1,6 @@
 use crate::{
     loader::{
-        load::{MeshLoad, Sample, SampleLoad, SpriteLoad, TextureLoad},
+        load::{MeshLoad, Sample, SpriteLoad, TextureLoad, ToVariant, VariantLoad},
         re::*,
         reader::Reader,
     },
@@ -15,6 +15,7 @@ pub(crate) struct Loader<'a> {
     sprites: Reader<'a, DynamicImage>,
     meshes: Reader<'a, Mesh, String>,
     samples: Reader<'a, Sample, String>,
+    variants: Reader<'a, ToVariant, String>,
 }
 
 impl<'a> Loader<'a> {
@@ -27,6 +28,7 @@ impl<'a> Loader<'a> {
             sprites: Reader::with_capacity((), Rc::clone(&buf), 8),
             meshes: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
             samples: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
+            variants: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
         }
     }
 
@@ -42,11 +44,12 @@ impl<'a> Loader<'a> {
         self.meshes.read_json(name, MeshLoad)
     }
 
-    pub fn load_sample(&mut self, name: &str) -> Result<Rc<Sample>, Error> {
-        self.samples.read_json(
+    pub fn load_variant(&mut self, name: &str) -> Result<Rc<ToVariant>, Error> {
+        self.variants.read_json(
             name,
-            SampleLoad {
+            VariantLoad {
                 meshes: &mut self.meshes,
+                samples: &mut self.samples,
             },
         )
     }

@@ -1,6 +1,6 @@
 mod overlay;
 pub(crate) mod polygon;
 mod shape;
-mod tile;
+mod variant;
 
 pub(crate) use self::overlay::Overlay;

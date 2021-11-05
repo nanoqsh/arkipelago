@@ -1,0 +1,17 @@
+{
+    "samples": [
+        "cube",
+        {
+            "name": "cube",
+            "rotation": 2,
+            "discard": [
+                "up"
+            ],
+            "sprites": {
+                "slot0": "sprite0",
+                "slot1": "sprite1"
+            }
+        }
+    ],
+    "sprite": "default"
+}
