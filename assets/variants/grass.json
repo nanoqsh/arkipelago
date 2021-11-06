@@ -2,14 +2,41 @@
     "samples": [
         {
             "name": "cube",
+            "rotation": 0,
             "discard": [
                 "up"
             ],
             "sprites": {
                 "up": "grass",
-                "down": "dirt"
+                "down": "dirt",
+                "forth": "stone"
+            }
+        },
+        {
+            "name": "cube",
+            "rotation": 1,
+            "discard": [
+                "up",
+                "down"
+            ],
+            "sprites": {
+                "up": "grass",
+                "down": "dirt",
+                "forth": "stone"
+            }
+        },
+        {
+            "name": "cube",
+            "rotation": 2,
+            "discard": [
+                "down"
+            ],
+            "sprites": {
+                "up": "grass",
+                "down": "dirt",
+                "forth": "stone"
             }
         }
     ],
-    "sprite": "default"
+    "sprite": "grass_side"
 }

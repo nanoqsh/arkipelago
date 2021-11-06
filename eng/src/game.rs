@@ -1,4 +1,11 @@
-use crate::{atlas::Atlas, camera::TpCamera, land::Factory, loader::Loader, Render, Texture, Vert};
+use crate::{
+    atlas::Atlas,
+    camera::TpCamera,
+    land::{Builder, Factory},
+    loader::Loader,
+    Render, Texture, Vert,
+};
+use core::side::*;
 use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
@@ -10,7 +17,7 @@ use std::{collections::HashMap, rc::Rc};
 
 struct Data {
     pub mesh: Indexed<Vert>,
-    pub tex: Rc<Texture>,
+    pub map: Texture,
 }
 
 impl Draw<Solid> for Data {
@@ -19,7 +26,7 @@ impl Draw<Solid> for Data {
         Solid: Stage<'a>,
     {
         pass.set_model(&Mat4::identity());
-        pass.set_texture(&self.tex);
+        pass.set_texture(&self.map);
         pass.draw_indexed_mesh(&self.mesh);
     }
 }
@@ -43,6 +50,7 @@ pub enum Control {
 pub struct Game {
     data: Data,
     cam: TpCamera,
+    aspect: f32,
 }
 
 impl Game {
@@ -67,19 +75,14 @@ impl Game {
 
         loader.load_sprite("tiles/default").unwrap();
 
-        let mesh = loader.load_mesh("cube").unwrap();
-        let cube = ren.make_mesh(&mesh);
-        let stone = loader.load_texture("tiles/stone").unwrap();
-
         let grass = loader.load_variant("grass").unwrap();
-        let samples = loader.take_samples();
         drop(loader);
 
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
-        let (_, mapper) = atlas.map();
+        let (map, mapper) = atlas.map();
+        let map = ren.make_texture(&map);
 
         let mut factory = Factory::new(mapper);
-
         let grass = grass
             .to_variant(&mut factory, |sprite| {
                 let idx = match sprite {
@@ -93,19 +96,26 @@ impl Game {
             })
             .unwrap();
 
+        let mut builder = Builder::with_capacity(64);
+        grass.build(Vec3::zero(), |_, _| Sides::all(), &mut builder);
+        let mesh = builder.mesh(ren);
+        builder.clear();
+
         Self {
-            data: Data {
-                mesh: cube,
-                tex: stone,
-            },
+            data: Data { mesh, map },
             cam: TpCamera::new(1., Pnt3::origin()),
+            aspect: 1.,
         }
     }
 
     pub fn draw(&mut self, ren: &mut Render, _: f32) {
-        ren.set_proj(self.cam.proj(1.));
+        ren.set_proj(self.cam.proj(self.aspect));
         ren.set_view(self.cam.view());
         ren.draw([&self.data as &dyn Pipe])
+    }
+
+    pub fn resize(&mut self, (width, height): (u32, u32)) {
+        self.aspect = width as f32 / height as f32;
     }
 
     pub fn input(&mut self, control: Control) {

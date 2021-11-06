@@ -1,6 +1,83 @@
-use crate::{Mesh, Vert};
+use crate::{
+    atlas::Mapper,
+    land::builder::{Builder, VertexData},
+    Mesh, Vert,
+};
 use core::prelude::*;
 use shr::cgm::Vec2;
+use std::{
+    collections::{hash_map::Entry, BTreeSet, HashMap, HashSet},
+    rc::Rc,
+};
+
+pub(crate) struct Parameters<'a> {
+    pub mesh: &'a Mesh,
+    pub rotation: Rotation,
+    pub discard: &'a HashSet<String>,
+    pub contact: &'a HashMap<String, Sides>,
+}
+
+#[derive(Eq, Hash, PartialEq)]
+struct Key {
+    rotation: Rotation,
+    discard: BTreeSet<u32>,
+}
+
+pub(crate) struct Factory {
+    shapes: HashMap<Key, Rc<Shape>>,
+    mapper: Mapper,
+}
+
+impl Factory {
+    pub fn new(mapper: Mapper) -> Self {
+        Self {
+            shapes: HashMap::with_capacity(16),
+            mapper,
+        }
+    }
+
+    pub fn make(&mut self, params: Parameters) -> Rc<Shape> {
+        const SHIFT: f32 = 0.00001;
+
+        let Parameters {
+            mesh,
+            rotation,
+            discard,
+            contact,
+        } = params;
+
+        let key = Key {
+            rotation,
+            discard: mesh
+                .slots()
+                .values()
+                .filter_map(|(slot, index)| discard.contains(slot).then(|| index))
+                .collect(),
+        };
+
+        match self.shapes.entry(key) {
+            Entry::Occupied(en) => Rc::clone(en.get()),
+            Entry::Vacant(en) => {
+                let shape = Shape::new(
+                    mesh,
+                    rotation,
+                    |slot| {
+                        if discard.contains(slot) {
+                            None
+                        } else {
+                            contact.get(slot).copied()
+                        }
+                    },
+                    |st| {
+                        (st * (1. - 2. * SHIFT) + Vec2::new(SHIFT, SHIFT))
+                            * self.mapper.multiplier()
+                    },
+                );
+                Rc::clone(en.insert(Rc::new(shape)))
+            }
+        }
+    }
+}
 
 type Face = [u32; 3];
 
@@ -9,6 +86,12 @@ pub(crate) struct Slotted {
     pub face: Face,
     pub slot: u32,
     pub contact: Sides,
+}
+
+impl From<Slotted> for VertexData {
+    fn from(Slotted { face, slot, .. }: Slotted) -> Self {
+        Self { face, slot }
+    }
 }
 
 pub(crate) struct Shape {
@@ -63,5 +146,35 @@ impl Shape {
 
     pub fn slotted(&self) -> impl Iterator<Item = Slotted> + '_ {
         self.slotted.iter().copied()
+    }
+
+    pub fn build<V>(&self, sides: Sides, vertex: V, builder: &mut Builder)
+    where
+        V: Fn(Vert, u32) -> Vert,
+    {
+        let free = self.free.iter().copied().map(|face| VertexData {
+            face,
+            slot: u32::MAX,
+        });
+
+        let slotted = self
+            .slotted
+            .iter()
+            .filter(|face| {
+                let contact = face.contact;
+                sides & contact == contact
+            })
+            .copied()
+            .map(Into::into);
+
+        builder.extend(free.chain(slotted), |vert_idx, slot| {
+            let vert = unsafe {
+                let vert_idx = vert_idx as usize;
+                debug_assert!(vert_idx < self.verts.len());
+                *self.verts.get_unchecked(vert_idx)
+            };
+
+            vertex(vert, slot)
+        })
     }
 }

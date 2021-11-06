@@ -14,8 +14,9 @@ impl App {
         self.game.draw(&mut self.render, delta)
     }
 
-    fn resize(&mut self, (width, height): (u32, u32)) {
-        self.render.resize((width, height))
+    fn resize(&mut self, size: (u32, u32)) {
+        self.render.resize(size);
+        self.game.resize(size);
     }
 
     fn key(&mut self, key: VirtualKeyCode, state: ElementState) {

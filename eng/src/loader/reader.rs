@@ -62,10 +62,6 @@ impl<'a, A, B> Reader<'a, A, B> {
         self.cached.on_load = Some(event)
     }
 
-    pub fn take(&mut self) -> HashMap<String, Rc<A>> {
-        std::mem::take(&mut self.cached.loaded)
-    }
-
     fn read<'l, L>(
         cached: &mut Cached<A>,
         name: &str,

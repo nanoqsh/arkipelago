@@ -146,7 +146,7 @@ impl Default for Parameters {
             typ: Type::Common,
             format: Format::Rgba,
             filter: Filter::Nearest,
-            wrap: Wrap::Repeat,
+            wrap: Wrap::ClampToEdge,
         }
     }
 }

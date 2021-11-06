@@ -28,6 +28,7 @@ enum RawMesh<'a> {
     Name(&'a str),
     Obj {
         name: &'a str,
+        height: Option<u8>,
         #[serde(default)]
         contact: HashMap<String, Sides>,
     },
@@ -41,80 +42,68 @@ enum RawOverlay<'a> {
 }
 
 #[derive(Deserialize)]
-pub(crate) struct RawSlab<'a> {
+pub(crate) struct RawSample<'a> {
     #[serde(borrow)]
-    mesh: Option<RawMesh<'a>>,
+    mesh: RawMesh<'a>,
     #[serde(default)]
-    overlay: HashMap<Sides, RawOverlay<'a>>,
+    overlay: Vec<HashMap<Sides, RawOverlay<'a>>>,
 }
-
-type RawSample<'a> = Vec<RawSlab<'a>>;
 
 pub(crate) struct ToShape {
     pub mesh: Rc<Mesh>,
+    pub height: u8,
     pub contact: HashMap<String, Sides>,
 }
 
-struct Slab {
-    shape: Option<ToShape>,
-    overlay: [Overlay; 6],
-}
-
-pub(crate) struct Sample(Vec<Slab>);
-
-impl Sample {
-    pub fn shapes(&self) -> impl Iterator<Item = Option<&ToShape>> {
-        self.0.iter().map(|slab| slab.shape.as_ref())
-    }
-
-    pub fn meshes(&self) -> impl Iterator<Item = &Mesh> + '_ {
-        self.0
-            .iter()
-            .filter_map(|slab| slab.shape.as_ref().map(|shape| Rc::as_ref(&shape.mesh)))
-    }
+pub(crate) struct Sample {
+    pub shape: ToShape,
+    pub overlay: Vec<[Overlay; 6]>,
 }
 
 fn load<M>(sample: RawSample, mut load_mesh: M) -> Result<Sample, Error>
 where
     M: FnMut(&str) -> Result<Rc<Mesh>, Error>,
 {
-    let slabs: Result<_, _> = sample
-        .into_iter()
-        .map(|slab| -> Result<_, Error> {
-            let shape = slab
-                .mesh
-                .map(|mesh| {
-                    let (name, contact) = match mesh {
-                        RawMesh::Name(name) => (name, HashMap::default()),
-                        RawMesh::Obj { name, contact } => (name, contact),
+    Ok(Sample {
+        shape: {
+            let (name, height, contact) = match sample.mesh {
+                RawMesh::Name(name) => (name, 1, HashMap::default()),
+                RawMesh::Obj {
+                    name,
+                    height,
+                    contact,
+                } => (name, height.unwrap_or(1), contact),
+            };
+
+            ToShape {
+                mesh: load_mesh(name)?,
+                height,
+                contact,
+            }
+        },
+        overlay: sample
+            .overlay
+            .into_iter()
+            .map(|overlay| {
+                let mut res = [Overlay::default(); 6];
+                for (sides, raw) in overlay {
+                    let over = match raw {
+                        RawOverlay::Tag(tag) => match tag {
+                            "none" => Overlay::None,
+                            "full" => Overlay::Full,
+                            _ => return Err(SampleError::Overlay(tag.into())),
+                        },
+                        RawOverlay::Polygon(poly) => Overlay::Polygon(Box::leak(Box::new(poly))),
                     };
 
-                    load_mesh(name).map(|mesh| ToShape { mesh, contact })
-                })
-                .transpose()?;
-
-            let mut overlay = [Overlay::default(); 6];
-            for (sides, raw) in slab.overlay {
-                let raw: RawOverlay = raw;
-                let over = match raw {
-                    RawOverlay::Tag(tag) => match tag {
-                        "none" => Overlay::None,
-                        "full" => Overlay::Full,
-                        _ => return Err(SampleError::Overlay(tag.into()).into()),
-                    },
-                    RawOverlay::Polygon(poly) => Overlay::Polygon(Box::leak(Box::new(poly))),
-                };
-
-                for side in sides {
-                    overlay[side as usize] = over;
+                    for side in sides {
+                        res[side as usize] = over;
+                    }
                 }
-            }
-
-            Ok(Slab { shape, overlay })
-        })
-        .collect();
-
-    Ok(Sample(slabs?))
+                Ok(res)
+            })
+            .collect::<Result<_, _>>()?,
+    })
 }
 
 pub(crate) struct SampleLoad<'a, 'b> {

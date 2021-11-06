@@ -1,8 +1,6 @@
-use crate::{
-    mesh::{Key, Mesh},
-    Texture, Vert,
-};
-use ngl::{mesh::Indexed, texture, Parameters, Pipe};
+use crate::{IndexedMesh, Texture, Vert};
+use image::{DynamicImage, GenericImageView};
+use ngl::{Parameters, Pipe};
 use shr::cgm::*;
 
 type Ren = ngl::Render;
@@ -29,7 +27,7 @@ impl Render {
 
         INIT.with(|initialized| {
             if initialized.get() {
-                panic!("Render has already been created once")
+                panic!("render has already been created once")
             }
 
             initialized.set(true);
@@ -42,15 +40,28 @@ impl Render {
         }
     }
 
-    pub fn make_texture(&self, data: &[u8], size: UVec2, params: texture::Parameters) -> Texture {
-        self.ren.make_texture(data, size, params)
+    pub fn make_texture(&self, image: &DynamicImage) -> Texture {
+        use ngl::texture::*;
+
+        let (data, format) = match image {
+            DynamicImage::ImageLuma8(data) => (data.as_raw(), Format::R),
+            DynamicImage::ImageLumaA8(data) => (data.as_raw(), Format::Rg),
+            DynamicImage::ImageRgb8(data) => (data.as_raw(), Format::Rgb),
+            DynamicImage::ImageRgba8(data) => (data.as_raw(), Format::Rgba),
+            _ => panic!("unsupported image format"),
+        };
+
+        let size = image.dimensions();
+        let params = Parameters {
+            format,
+            ..Parameters::default()
+        };
+
+        self.ren.make_texture(data, size.into(), params)
     }
 
-    pub fn make_mesh<K>(&self, mesh: &Mesh<Vert, K>) -> Indexed<Vert>
-    where
-        K: Key + ?Sized,
-    {
-        self.ren.make_indexed_mesh(mesh.verts(), mesh.indxs())
+    pub fn make_mesh(&self, verts: &[Vert], indxs: &[u32]) -> IndexedMesh {
+        self.ren.make_indexed_mesh(verts, indxs)
     }
 
     pub fn resize(&mut self, size: (u32, u32)) {
@@ -72,7 +83,7 @@ impl Render {
         self.ren.draw(
             draws,
             Parameters {
-                cl: Vec3::new(0.2, 0., 0.1),
+                cl: Vec3::new(0., 0., 0.),
                 view: self.view.take().as_ref(),
                 proj: self.proj.take().as_ref(),
             },

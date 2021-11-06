@@ -1,10 +1,12 @@
+mod builder;
 mod overlay;
 pub(crate) mod polygon;
 mod shape;
-mod shape_factory;
 pub(crate) mod variant;
+mod vec_map;
 
 pub(crate) use self::{
+    builder::Builder,
     overlay::Overlay,
-    shape_factory::{Factory, Parameters},
+    shape::{Factory, Parameters},
 };

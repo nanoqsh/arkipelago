@@ -1,10 +1,10 @@
 use crate::{
     land::{
-        variant::{self, Slab, Variant},
+        variant::{self, Variant},
         Factory, Parameters,
     },
     loader::{
-        load::{Sample, SampleLoad, SpriteLoad},
+        load::{Sample, SampleLoad, SpriteLoad, ToShape},
         re::*,
         reader::Reader,
     },
@@ -87,36 +87,39 @@ impl ToVariant {
     {
         let factory = RefCell::new(factory);
         Variant::new(
-            self.samples.iter().flat_map(|info| {
-                info.sample.shapes().map(|shape| match shape {
-                    None => Slab::Empty,
-                    Some(shape) => Slab::Mesh {
-                        shape: factory.borrow_mut().make(Parameters {
-                            mesh: &shape.mesh,
-                            rotation: info.rotation,
-                            discard: &info.discard,
-                            contact: &shape.contact,
-                        }),
-                        sprites_st: info
-                            .sprites
-                            .as_ref()
-                            .map(|sprites| match sprites {
-                                Sprites::One(sprite) => {
-                                    let st = st(Some(sprite));
-                                    std::iter::repeat(st)
-                                        .take(shape.mesh.slots().len())
-                                        .collect()
-                                }
-                                Sprites::Many(map) => shape
-                                    .mesh
-                                    .slots()
-                                    .ordered_keys()
-                                    .map(|key| st(map.get(key).map(String::as_str)))
-                                    .collect(),
-                            })
-                            .unwrap_or_default(),
-                    },
-                })
+            self.samples.iter().map(|info| {
+                let ToShape {
+                    mesh,
+                    height,
+                    contact,
+                } = &info.sample.shape;
+
+                variant::Mesh {
+                    shape: factory.borrow_mut().make(Parameters {
+                        mesh,
+                        rotation: info.rotation,
+                        discard: &info.discard,
+                        contact,
+                    }),
+                    sprites_st: info
+                        .sprites
+                        .as_ref()
+                        .map(|sprites| match sprites {
+                            Sprites::One(sprite) => std::iter::repeat(st(Some(sprite)))
+                                .take(mesh.slots().len())
+                                .collect(),
+                            Sprites::Many(map) => mesh
+                                .slots()
+                                .ordered_keys()
+                                .map(|slot| match map.get(slot) {
+                                    None => st(self.sprite.as_deref()),
+                                    Some(name) => st(Some(name)),
+                                })
+                                .collect(),
+                        })
+                        .unwrap_or_default(),
+                    height: *height,
+                }
             }),
             st(self.sprite.as_deref()),
         )
@@ -136,44 +139,49 @@ where
         return Err(VariantError::Empty.into());
     }
 
-    let samples: Result<_, _> = variant
-        .samples
-        .into_iter()
-        .map(|sample| -> Result<_, Error> {
-            let (name, rotation, discard, sprites) = match sample {
-                RawSample::Name(name) => (name, Rotation::default(), HashSet::default(), None),
-                RawSample::Obj {
-                    name,
-                    rotation,
-                    discard,
-                    sprites,
-                } => (
-                    name,
-                    Rotation::from_quarters(rotation).ok_or(VariantError::Rotation(rotation))?,
-                    discard,
-                    sprites,
-                ),
-            };
+    if let Some(sprite) = &variant.sprite {
+        let _ = load_sprite(sprite);
+    }
 
-            if let Some(sprites) = &sprites {
-                match sprites {
-                    Sprites::One(sprite) => {
-                        let _ = load_sprite(sprite);
-                    }
-                    Sprites::Many(map) => {
-                        for sprite in map.values() {
+    Ok(ToVariant {
+        samples: variant
+            .samples
+            .into_iter()
+            .map(|sample| -> Result<_, Error> {
+                let (name, rotation, discard, sprites) = match sample {
+                    RawSample::Name(name) => (name, Rotation::default(), HashSet::default(), None),
+                    RawSample::Obj {
+                        name,
+                        rotation,
+                        discard,
+                        sprites,
+                    } => (
+                        name,
+                        Rotation::from_quarters(rotation)
+                            .ok_or(VariantError::Rotation(rotation))?,
+                        discard,
+                        sprites,
+                    ),
+                };
+
+                if let Some(sprites) = &sprites {
+                    match sprites {
+                        Sprites::One(sprite) => {
                             let _ = load_sprite(sprite);
+                        }
+                        Sprites::Many(map) => {
+                            for sprite in map.values() {
+                                let _ = load_sprite(sprite);
+                            }
                         }
                     }
                 }
-            }
 
-            load_sample(name).and_then(|sample| {
+                let sample = load_sample(name)?;
                 for slot in &discard {
-                    sample
-                        .meshes()
-                        .find_map(|mesh| mesh.slots().index(slot))
-                        .ok_or_else(|| VariantError::Slot(slot.into()))?;
+                    if sample.shape.mesh.slots().index(slot).is_none() {
+                        return Err(VariantError::Slot(slot.into()).into());
+                    }
                 }
 
                 Ok(SampleInfo {
@@ -183,15 +191,7 @@ where
                     sprites,
                 })
             })
-        })
-        .collect();
-
-    if let Some(sprite) = &variant.sprite {
-        let _ = load_sprite(sprite);
-    }
-
-    Ok(ToVariant {
-        samples: samples?,
+            .collect::<Result<_, _>>()?,
         sprite: variant.sprite,
     })
 }

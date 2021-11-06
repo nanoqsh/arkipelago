@@ -1,4 +1,8 @@
-use crate::land::shape::Shape;
+use crate::{
+    land::{builder::Builder, shape::Shape},
+    Vert,
+};
+use core::side::*;
 use shr::cgm::*;
 use std::{error, fmt, rc::Rc};
 
@@ -17,43 +21,60 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
-pub(crate) enum Slab {
-    Empty,
-    Mesh {
-        shape: Rc<Shape>,
-        sprites_st: Box<[Vec2]>,
-    },
+pub(crate) struct Mesh {
+    pub shape: Rc<Shape>,
+    pub sprites_st: Box<[Vec2]>,
+    pub height: u8,
 }
 
 pub(crate) struct Variant {
-    slabs: Box<[Slab]>,
+    meshes: Box<[Mesh]>,
     sprite_st: Vec2,
 }
 
 impl Variant {
-    pub fn new<S>(slabs: S, sprite_st: Vec2) -> Result<Self, Error>
+    pub fn new<S>(meshes: S, sprite_st: Vec2) -> Result<Self, Error>
     where
-        S: IntoIterator<Item = Slab>,
+        S: IntoIterator<Item = Mesh>,
     {
-        let slabs: Result<_, _> = slabs
-            .into_iter()
-            .map(|slab| {
-                match &slab {
-                    Slab::Empty => (),
-                    Slab::Mesh { shape, sprites_st } => {
-                        let n_slots = sprites_st.len() as u32;
-                        if let Some(face) = shape.slotted().find(|face| face.slot >= n_slots) {
-                            return Err(Error::MissedSprite(face.slot));
-                        }
-                    }
-                }
-                Ok(slab)
-            })
-            .collect();
-
         Ok(Self {
-            slabs: slabs?,
+            meshes: meshes
+                .into_iter()
+                .map(|mesh| {
+                    let n_slots = mesh.sprites_st.len() as u32;
+                    if let Some(face) = mesh.shape.slotted().find(|face| face.slot >= n_slots) {
+                        return Err(Error::MissedSprite(face.slot));
+                    }
+
+                    Ok(mesh)
+                })
+                .collect::<Result<_, _>>()?,
             sprite_st,
         })
+    }
+
+    pub fn build<S>(&self, mut offset: Vec3, sides: S, builder: &mut Builder)
+    where
+        S: Fn(u8, u8) -> Sides,
+    {
+        let mut level = 0;
+        for mesh in self.meshes.iter() {
+            mesh.shape.build(
+                sides(level, mesh.height),
+                |vert, slot| Vert {
+                    co: vert.co + offset,
+                    nm: vert.nm,
+                    st: vert.st
+                        + match slot {
+                            u32::MAX => self.sprite_st,
+                            _ => mesh.sprites_st[slot as usize],
+                        },
+                },
+                builder,
+            );
+
+            level += mesh.height;
+            offset.y += 0.5 * mesh.height as f32;
+        }
     }
 }
