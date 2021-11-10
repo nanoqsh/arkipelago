@@ -7,9 +7,9 @@
                 "up"
             ],
             "sprites": {
-                "up": "grass",
+                "up": "dirt",
                 "down": "dirt",
-                "forth": "stone"
+                "forth": "dirt"
             }
         },
         {
@@ -20,9 +20,9 @@
                 "down"
             ],
             "sprites": {
-                "up": "grass",
+                "up": "dirt",
                 "down": "dirt",
-                "forth": "stone"
+                "forth": "dirt"
             }
         },
         {
@@ -32,11 +32,11 @@
                 "down"
             ],
             "sprites": {
-                "up": "grass",
+                "up": "dirt",
                 "down": "dirt",
-                "forth": "stone"
+                "forth": "dirt"
             }
         }
     ],
-    "sprite": "grass_side"
+    "sprite": "default"
 }
