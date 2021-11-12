@@ -5,7 +5,7 @@ use crate::{
     loader::Loader,
     Render, Texture, Vert,
 };
-use core::side::*;
+use core::{chunk_point::ChunkPoint, side::*};
 use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
@@ -97,7 +97,17 @@ impl Game {
             .unwrap();
 
         let mut builder = Builder::with_capacity(64);
-        grass.build(Vec3::zero(), |_, _| Sides::all(), &mut builder);
+        grass.build(Vec3::zero(), |level, height| {
+            let pos = ChunkPoint::new(0, 0, 0).unwrap();
+
+            let _lo = match level {
+                0 => pos.to(Side::Down, 1).unwrap(),
+                _ => pos.to(Side::Up, level - 1).unwrap(),
+            };
+            let _hi = pos.to(Side::Up, level + height).unwrap();
+
+            Sides::all()
+        }, &mut builder);
         let mesh = builder.mesh(ren);
         builder.clear();
 

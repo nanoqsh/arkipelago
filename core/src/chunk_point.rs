@@ -9,7 +9,7 @@ const CHUNK_HEIGHT_MAX: u8 = CHUNK_HEIGHT as u8 - 1;
 pub struct ChunkPoint(u16);
 
 impl ChunkPoint {
-    pub fn new(x: u8, y: u8, z: u8) -> Option<Self> {
+    pub const fn new(x: u8, y: u8, z: u8) -> Option<Self> {
         let (x, y, z) = match (x, y, z) {
             (0..=CHUNK_SIDE_MAX, 0..=CHUNK_HEIGHT_MAX, 0..=CHUNK_SIDE_MAX) => (x, y, z),
             _ => return None,
@@ -18,7 +18,7 @@ impl ChunkPoint {
         Some(Self(x as u16 | (y as u16) << 4 | (z as u16) << 9))
     }
 
-    pub fn points(self) -> (u8, u8, u8) {
+    pub const fn axes(self) -> (u8, u8, u8) {
         (
             (self.0 & 0b1111) as u8,
             (self.0 >> 4 & 0b11111) as u8,
@@ -26,23 +26,23 @@ impl ChunkPoint {
         )
     }
 
-    pub fn x(self) -> u8 {
-        self.points().0
+    pub const fn x(self) -> u8 {
+        self.axes().0
     }
 
-    pub fn y(self) -> u8 {
-        self.points().1
+    pub const fn y(self) -> u8 {
+        self.axes().1
     }
 
-    pub fn z(self) -> u8 {
-        self.points().2
+    pub const fn z(self) -> u8 {
+        self.axes().2
     }
 
     /// Returns the point moved to `side` by `n`.
     /// If `Ok` returns, then the point is in this chunk,
     /// `Err` in the neighboring one.
     pub fn to(self, side: Side, n: u8) -> Result<Self, Self> {
-        let (x, y, z) = self.points();
+        let (x, y, z) = self.axes();
         match side {
             Side::Left => Self::new(x.saturating_add(n), y, z)
                 .ok_or_else(|| Self::new(x.saturating_add(n) - CHUNK_SIDE as u8, y, z).unwrap()),
@@ -88,9 +88,22 @@ impl TryFrom<UVec3> for ChunkPoint {
     }
 }
 
+impl From<ChunkPoint> for (u8, u8, u8) {
+    fn from(point: ChunkPoint) -> Self {
+        point.axes()
+    }
+}
+
+impl From<ChunkPoint> for UVec3 {
+    fn from(point: ChunkPoint) -> Self {
+        let (x, y, z) = point.axes();
+        Self::new(x as u32, y as u32, z as u32)
+    }
+}
+
 impl fmt::Display for ChunkPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let (x, y, z) = self.points();
+        let (x, y, z) = self.axes();
         write!(f, "[{}, {}, {}]", x, y, z)
     }
 }

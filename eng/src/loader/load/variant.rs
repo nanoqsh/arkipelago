@@ -94,7 +94,7 @@ impl ToVariant {
                     contact,
                 } = &info.sample.shape;
 
-                variant::Mesh {
+                let mesh = variant::Mesh {
                     shape: factory.borrow_mut().make(Parameters {
                         mesh,
                         rotation: info.rotation,
@@ -119,7 +119,9 @@ impl ToVariant {
                         })
                         .unwrap_or_default(),
                     height: *height,
-                }
+                };
+
+                (mesh, info.sample.overlay.as_slice())
             }),
             st(self.sprite.as_deref()),
         )
