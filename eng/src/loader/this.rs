@@ -1,4 +1,5 @@
 use crate::{
+    land::polygon::Polygons,
     loader::{
         load::{MeshLoad, Sample, SpriteLoad, TextureLoad, ToVariant, VariantLoad},
         re::*,
@@ -10,12 +11,13 @@ use image::DynamicImage;
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 pub(crate) struct Loader<'a> {
-    ren: &'a Render,
     textures: Reader<'a, Texture>,
     sprites: Reader<'a, DynamicImage>,
     meshes: Reader<'a, Mesh, String>,
     samples: Reader<'a, Sample, String>,
     variants: Reader<'a, ToVariant, String>,
+    ren: &'a Render,
+    polygons: Polygons,
 }
 
 impl<'a> Loader<'a> {
@@ -23,12 +25,13 @@ impl<'a> Loader<'a> {
         let buf = Rc::new(RefCell::new(PathBuf::with_capacity(64)));
 
         Self {
-            ren,
             textures: Reader::with_capacity((), Rc::clone(&buf), 8),
             sprites: Reader::with_capacity((), Rc::clone(&buf), 8),
             meshes: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
             samples: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
             variants: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
+            ren,
+            polygons: Polygons::with_capacity(16),
         }
     }
 
@@ -51,6 +54,7 @@ impl<'a> Loader<'a> {
                 sprites: &mut self.sprites,
                 meshes: &mut self.meshes,
                 samples: &mut self.samples,
+                polygons: &mut self.polygons,
             },
         )
     }
@@ -74,5 +78,10 @@ impl<'a> Loader<'a> {
         F: FnMut(&str, Rc<Mesh>) + 'a,
     {
         self.meshes.on_load(Box::new(event))
+    }
+
+    pub fn take_polygons(&mut self) -> Polygons {
+        self.polygons.shrink_to_fit();
+        std::mem::take(&mut self.polygons)
     }
 }

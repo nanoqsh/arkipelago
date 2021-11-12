@@ -5,7 +5,7 @@ use crate::{
     loader::Loader,
     Render, Texture, Vert,
 };
-use core::{chunk_point::ChunkPoint, side::*};
+use core::prelude::{ChunkPoint, Side, Sides};
 use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
@@ -76,6 +76,7 @@ impl Game {
         loader.load_sprite("tiles/default").unwrap();
 
         let grass = loader.load_variant("grass").unwrap();
+        let polygons = loader.take_polygons();
         drop(loader);
 
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
@@ -97,17 +98,55 @@ impl Game {
             .unwrap();
 
         let mut builder = Builder::with_capacity(64);
-        grass.build(Vec3::zero(), |level, height| {
-            let pos = ChunkPoint::new(0, 0, 0).unwrap();
+        grass.build(
+            Vec3::zero(),
+            |level, height| {
+                let pos = ChunkPoint::new(0, 0, 0).unwrap();
+                let variant_height = grass.connections().len() as u8;
+                let mut sides = Sides::empty();
 
-            let _lo = match level {
-                0 => pos.to(Side::Down, 1).unwrap(),
-                _ => pos.to(Side::Up, level - 1).unwrap(),
-            };
-            let _hi = pos.to(Side::Up, level + height).unwrap();
+                for conn in grass.connections() {
+                    let _ = conn.overlaps(conn, Side::Left, &polygons);
+                    todo!()
+                }
 
-            Sides::all()
-        }, &mut builder);
+                if level + height == variant_height {
+                    sides |= Side::Up;
+                } else {
+                    match pos.to(Side::Up, level + height) {
+                        Ok(hi) => todo!(),
+                        Err(hi) => todo!(),
+                    }
+                }
+
+                if level == 0 {
+                    sides |= Side::Down;
+                } else {
+                    match pos.to(Side::Down, 1) {
+                        Ok(lo) => todo!(),
+                        Err(lo) => todo!(),
+                    }
+                }
+
+                for side in [Side::Left, Side::Right, Side::Forth, Side::Back] {
+                    let (mut curr, _) = match pos.to(side, 1) {
+                        Ok(curr) => (curr, ()),
+                        Err(curr) => (curr, ()),
+                    };
+
+                    for _ in 0..height {
+                        let (next, _) = match curr.to(Side::Up, 1) {
+                            Ok(next) => (next, ()),
+                            Err(next) => (next, ()),
+                        };
+                        curr = next;
+                    }
+                }
+
+                sides
+            },
+            &mut builder,
+        );
         let mesh = builder.mesh(ren);
         builder.clear();
 

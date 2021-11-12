@@ -1,5 +1,6 @@
 use crate::{
     land::{
+        polygon::Polygons,
         variant::{self, Variant},
         Factory, Parameters,
     },
@@ -121,7 +122,14 @@ impl ToVariant {
                     height: *height,
                 };
 
-                (mesh, info.sample.overlay.as_slice())
+                (
+                    mesh,
+                    info.sample
+                        .conn
+                        .iter()
+                        .copied()
+                        .map(|conn| conn.rotated(info.rotation)),
+                )
             }),
             st(self.sprite.as_deref()),
         )
@@ -202,6 +210,7 @@ pub(crate) struct VariantLoad<'a, 'b> {
     pub sprites: &'a mut Reader<'b, DynamicImage>,
     pub meshes: &'a mut Reader<'b, Mesh, String>,
     pub samples: &'a mut Reader<'b, Sample, String>,
+    pub polygons: &'a mut Polygons,
 }
 
 impl<'a> Load<'a> for VariantLoad<'a, '_> {
@@ -226,6 +235,7 @@ impl<'a> Load<'a> for VariantLoad<'a, '_> {
                     name,
                     SampleLoad {
                         meshes: self.meshes,
+                        polygons: self.polygons,
                     },
                 )
             },

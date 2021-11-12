@@ -1,5 +1,5 @@
 use crate::{
-    land::{builder::Builder, overlay::Overlay, shape::Shape},
+    land::{builder::Builder, shape::Shape, Connections},
     Vert,
 };
 use core::side::*;
@@ -29,21 +29,22 @@ pub(crate) struct Mesh {
 
 pub(crate) struct Variant {
     meshes: Box<[Mesh]>,
-    overlay: Box<[[Overlay; 6]]>,
+    conn: Box<[Connections]>,
     sprite_st: Vec2,
 }
 
 impl Variant {
-    pub fn new<'a, S>(meshes: S, sprite_st: Vec2) -> Result<Self, Error>
+    pub fn new<S, C>(meshes: S, sprite_st: Vec2) -> Result<Self, Error>
     where
-        S: IntoIterator<Item = (Mesh, &'a [[Overlay; 6]])>,
+        S: IntoIterator<Item = (Mesh, C)>,
+        C: IntoIterator<Item = Connections>,
     {
-        let mut overlay  = Vec::new();
+        let mut conn = Vec::new();
         Ok(Self {
             meshes: meshes
                 .into_iter()
-                .map(|(mesh, over)| {
-                    overlay.extend_from_slice(over);
+                .map(|(mesh, cs)| {
+                    conn.extend(cs);
 
                     let n_slots = mesh.sprites_st.len() as u32;
                     if let Some(face) = mesh.shape.slotted().find(|face| face.slot >= n_slots) {
@@ -53,13 +54,13 @@ impl Variant {
                     Ok(mesh)
                 })
                 .collect::<Result<_, _>>()?,
-            overlay: overlay.into_boxed_slice(),
+            conn: conn.into_boxed_slice(),
             sprite_st,
         })
     }
 
-    pub fn overlay(&self) -> &[[Overlay; 6]] {
-        &self.overlay
+    pub fn connections(&self) -> &[Connections] {
+        &self.conn
     }
 
     pub fn build<S>(&self, mut offset: Vec3, sides: S, builder: &mut Builder)

@@ -1,5 +1,8 @@
 use crate::{
-    land::{polygon::Polygon, Overlay},
+    land::{
+        polygon::{Polygon, Polygons},
+        Connections, Overlay,
+    },
     loader::{load::MeshLoad, re::*, reader::Reader},
     Mesh,
 };
@@ -57,10 +60,10 @@ pub(crate) struct ToShape {
 
 pub(crate) struct Sample {
     pub shape: ToShape,
-    pub overlay: Vec<[Overlay; 6]>,
+    pub conn: Vec<Connections>,
 }
 
-fn load<M>(sample: RawSample, mut load_mesh: M) -> Result<Sample, Error>
+fn load<M>(sample: RawSample, mut load_mesh: M, polygons: &mut Polygons) -> Result<Sample, Error>
 where
     M: FnMut(&str) -> Result<Rc<Mesh>, Error>,
 {
@@ -81,26 +84,25 @@ where
                 contact,
             }
         },
-        overlay: sample
+        conn: sample
             .overlay
             .into_iter()
             .map(|overlay| {
-                let mut res = [Overlay::default(); 6];
+                let mut conn = Connections::new();
                 for (sides, raw) in overlay {
-                    let over = match raw {
-                        RawOverlay::Tag(tag) => match tag {
-                            "none" => Overlay::None,
-                            "full" => Overlay::Full,
-                            _ => return Err(SampleError::Overlay(tag.into())),
+                    conn.set(
+                        sides,
+                        match raw {
+                            RawOverlay::Tag(tag) => match tag {
+                                "none" => Overlay::new_none(),
+                                "full" => Overlay::new_full(),
+                                _ => return Err(SampleError::Overlay(tag.into())),
+                            },
+                            RawOverlay::Polygon(poly) => Overlay::from_polygon(poly, polygons),
                         },
-                        RawOverlay::Polygon(poly) => Overlay::Polygon(Box::leak(Box::new(poly))),
-                    };
-
-                    for side in sides {
-                        res[side as usize] = over;
-                    }
+                    )
                 }
-                Ok(res)
+                Ok(conn)
             })
             .collect::<Result<_, _>>()?,
     })
@@ -108,6 +110,7 @@ where
 
 pub(crate) struct SampleLoad<'a, 'b> {
     pub meshes: &'a mut Reader<'b, Mesh, String>,
+    pub polygons: &'a mut Polygons,
 }
 
 impl<'a> Load<'a> for SampleLoad<'a, '_> {
@@ -116,6 +119,10 @@ impl<'a> Load<'a> for SampleLoad<'a, '_> {
     type Asset = Sample;
 
     fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
-        load(raw, |name| self.meshes.read_json(name, MeshLoad))
+        load(
+            raw,
+            |name| self.meshes.read_json(name, MeshLoad),
+            self.polygons,
+        )
     }
 }

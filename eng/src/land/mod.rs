@@ -7,6 +7,6 @@ mod vec_map;
 
 pub(crate) use self::{
     builder::Builder,
-    overlay::Overlay,
+    overlay::{Connections, Overlay},
     shape::{Factory, Parameters},
 };

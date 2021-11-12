@@ -1,9 +1,12 @@
-use crate::{side::*, CHUNK_HEIGHT, CHUNK_SIDE};
-use shr::cgm::UVec3;
+use crate::{
+    chunk::{HEIGHT, SIDE},
+    prelude::Side,
+};
+use shr::cgm::*;
 use std::fmt;
 
-const CHUNK_SIDE_MAX: u8 = CHUNK_SIDE as u8 - 1;
-const CHUNK_HEIGHT_MAX: u8 = CHUNK_HEIGHT as u8 - 1;
+const CHUNK_SIDE_MAX: u8 = SIDE as u8 - 1;
+const CHUNK_HEIGHT_MAX: u8 = HEIGHT as u8 - 1;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct ChunkPoint(u16);
@@ -45,30 +48,30 @@ impl ChunkPoint {
         let (x, y, z) = self.axes();
         match side {
             Side::Left => Self::new(x.saturating_add(n), y, z)
-                .ok_or_else(|| Self::new(x.saturating_add(n) - CHUNK_SIDE as u8, y, z).unwrap()),
+                .ok_or_else(|| Self::new(x.saturating_add(n) - SIDE as u8, y, z).unwrap()),
             Side::Right => {
                 if x >= n {
                     Ok(Self::new(x - n, y, z).unwrap())
                 } else {
-                    Err(Self::new((CHUNK_SIDE as u8).wrapping_sub(n) + x, y, z).unwrap())
+                    Err(Self::new((SIDE as u8).wrapping_sub(n) + x, y, z).unwrap())
                 }
             }
             Side::Up => Self::new(x, y.saturating_add(n), z)
-                .ok_or_else(|| Self::new(x, y.saturating_add(n) - CHUNK_HEIGHT as u8, z).unwrap()),
+                .ok_or_else(|| Self::new(x, y.saturating_add(n) - HEIGHT as u8, z).unwrap()),
             Side::Down => {
                 if y >= n {
                     Ok(Self::new(x, y - n, z).unwrap())
                 } else {
-                    Err(Self::new(x, (CHUNK_HEIGHT as u8).wrapping_sub(n) + y, z).unwrap())
+                    Err(Self::new(x, (HEIGHT as u8).wrapping_sub(n) + y, z).unwrap())
                 }
             }
             Side::Forth => Self::new(x, y, z.saturating_add(n))
-                .ok_or_else(|| Self::new(x, y, z.saturating_add(n) - CHUNK_SIDE as u8).unwrap()),
+                .ok_or_else(|| Self::new(x, y, z.saturating_add(n) - SIDE as u8).unwrap()),
             Side::Back => {
                 if z >= n {
                     Ok(Self::new(x, y, z - n).unwrap())
                 } else {
-                    Err(Self::new(x, y, (CHUNK_SIDE as u8).wrapping_sub(n) + z).unwrap())
+                    Err(Self::new(x, y, (SIDE as u8).wrapping_sub(n) + z).unwrap())
                 }
             }
         }
@@ -80,7 +83,7 @@ impl TryFrom<UVec3> for ChunkPoint {
 
     fn try_from(vec: UVec3) -> Result<Self, Self::Error> {
         let (x, y, z) = vec.into();
-        if x >= CHUNK_SIDE as u32 || y >= CHUNK_HEIGHT as u32 || z >= CHUNK_SIDE as u32 {
+        if x >= SIDE as u32 || y >= HEIGHT as u32 || z >= SIDE as u32 {
             return Err(());
         }
 
