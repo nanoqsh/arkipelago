@@ -43,10 +43,6 @@ impl<K> Slots<K>
 where
     K: Key + ?Sized,
 {
-    pub fn faces(&self, idx: u32) -> Option<&[u32]> {
-        self.slots.get(idx as usize).map(|slot| &slot[..])
-    }
-
     pub fn face_indices(&self) -> impl Iterator<Item = u32> + '_ {
         self.slots.iter().map(|slot| slot.iter().copied()).flatten()
     }

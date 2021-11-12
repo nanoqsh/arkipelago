@@ -7,6 +7,7 @@ mod layout;
 mod line;
 pub mod mesh;
 pub mod pass;
+#[allow(dead_code)]
 mod program;
 mod quad;
 mod render;
