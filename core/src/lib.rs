@@ -2,6 +2,7 @@ mod chunk;
 mod chunk_point;
 pub mod rotation;
 pub mod side;
+mod slab;
 
 pub mod prelude {
     pub use crate::{
