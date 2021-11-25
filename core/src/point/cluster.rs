@@ -1,4 +1,4 @@
-use crate::point::Error;
+use crate::{point::Error, side::Side};
 use shr::cgm::*;
 use std::fmt;
 
@@ -28,6 +28,48 @@ impl ClusterPoint {
 
     pub const fn z(self) -> i32 {
         self.z
+    }
+
+    pub fn to(self, side: Side) -> Self {
+        let (x, y, z) = self.into();
+        match side {
+            Side::Left => x
+                .checked_add(1)
+                .map(|x| Self { x, y, z })
+                .unwrap_or_else(|| Self {
+                    x: i32::MIN + 1,
+                    y,
+                    z,
+                }),
+            Side::Right => match x - 1 {
+                i32::MIN => Self { x: i32::MAX, y, z },
+                x => Self { x, y, z },
+            },
+            Side::Up => y
+                .checked_add(1)
+                .map(|y| Self { x, y, z })
+                .unwrap_or_else(|| Self {
+                    x,
+                    y: i32::MIN + 1,
+                    z,
+                }),
+            Side::Down => match y - 1 {
+                i32::MIN => Self { x, y: i32::MAX, z },
+                y => Self { x, y, z },
+            },
+            Side::Forth => z
+                .checked_add(1)
+                .map(|z| Self { x, y, z })
+                .unwrap_or_else(|| Self {
+                    x,
+                    y,
+                    z: i32::MIN + 1,
+                }),
+            Side::Back => match z - 1 {
+                i32::MIN => Self { x, y, z: i32::MAX },
+                z => Self { x, y, z },
+            },
+        }
     }
 }
 

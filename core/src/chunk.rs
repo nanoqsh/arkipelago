@@ -6,6 +6,13 @@ pub(crate) const HEIGHT: usize = SIDE * 2;
 pub struct Chunk<T>([[[T; HEIGHT]; SIDE]; SIDE]);
 
 impl<T> Chunk<T> {
+    pub fn filled(val: T) -> Self
+    where
+        T: Copy,
+    {
+        Self([[[val; HEIGHT]; SIDE]; SIDE])
+    }
+
     pub fn get(&self, point: ChunkPoint) -> &T {
         let (x, y, z) = point.axes();
         unsafe { self.get_unchecked(x as usize, y as usize, z as usize) }

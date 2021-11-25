@@ -2,15 +2,16 @@
 ///
 /// Can be a empty, base or truck.
 /// Empty -> all bits are 0.
-/// Base -> tttttttt_tttttttt_0lll0hhh_vvvvvvvv
+/// Base -> tttttttt_tttttttt_lll00hhh_vvvvvvvv
 /// where
 ///     t: tile
 ///     l: level (always 0 for base)
 ///     h: height (actual height - 1)
 ///     v: variant
-/// Trunk -> tttttttt_tttttttt_0llldddd_dddddddd
+/// Trunk -> tttttttt_tttttttt_lllodddd_dddddddd
 /// where
 ///     t: tile
+///     o: obj
 ///     l: level
 ///     d: data
 #[derive(Copy, Clone)]
@@ -24,7 +25,7 @@ impl Slab {
     pub const fn typed(self) -> Typed {
         match self {
             Self(0, _) => Typed::Empty(Empty),
-            Self(a, b) if b >> 12 & 0b111 == 0 => Typed::Base(Base(a, b)),
+            Self(a, b) if b >> 13 & 0b111 == 0 => Typed::Base(Base(a, b)),
             Self(a, b) => Typed::Trunk(Trunk(a, b)),
         }
     }
@@ -80,7 +81,7 @@ impl Base {
     }
 
     pub const fn level(self) -> u8 {
-        (self.1 >> 12) as u8 & 0b111
+        (self.1 >> 13) as u8 & 0b111
     }
 
     pub const fn height(self) -> u8 {
@@ -92,12 +93,20 @@ impl Base {
 pub(crate) struct Trunk(u16, u16);
 
 impl Trunk {
-    pub const fn new(tile: u16, data: u16, level: u8) -> Self {
-        Self(tile, data | (level as u16) << 12)
+    pub const fn new(tile: u16, data: u16, obj: bool, level: u8) -> Self {
+        let mut b = data | (level as u16) << 13;
+        if obj {
+            b |= 1 << 12;
+        }
+        Self(tile, b)
     }
 
     pub const fn tile(self) -> u16 {
         self.0
+    }
+
+    pub const fn is_obj(self) -> bool {
+        self.1 & 1 << 12 != 0
     }
 
     pub const fn data(self) -> u16 {
@@ -105,6 +114,10 @@ impl Trunk {
     }
 
     pub const fn level(self) -> u8 {
-        (self.1 >> 12) as u8 & 0b111
+        (self.1 >> 13) as u8 & 0b111
+    }
+
+    pub fn set_data(&mut self, data: u16) {
+        self.1 |= data;
     }
 }

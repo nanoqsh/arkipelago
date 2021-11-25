@@ -1,5 +1,6 @@
 mod chunk;
 mod cluster;
+pub mod layout;
 pub mod point;
 pub mod rotation;
 pub mod side;
@@ -9,9 +10,10 @@ mod tile;
 pub mod prelude {
     pub use crate::{
         chunk::Chunk,
+        cluster::Cluster,
         point::{ChunkPoint, ClusterPoint, GlobalPoint},
         rotation::Rotation,
         side::{Side, Sides},
-        tile::Tile,
+        tile::{Tile, Tiles},
     };
 }
