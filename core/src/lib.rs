@@ -1,6 +1,7 @@
 mod chunk;
 mod cluster;
 pub mod layout;
+pub mod map;
 pub mod point;
 pub mod rotation;
 pub mod side;
