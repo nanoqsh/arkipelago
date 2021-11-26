@@ -157,15 +157,13 @@ impl Cluster {
             }
             Typed::Trunk(slab) => {
                 let level = slab.level();
+                let dw = cl.to(Side::Down);
                 gl = match ch.to(Side::Down, level) {
                     Ok(ch) => GlobalPoint::new(ch, cl),
-                    Err(ch) => GlobalPoint::new(ch, cl.to(Side::Down)),
+                    Err(ch) => GlobalPoint::new(ch, dw),
                 };
                 let cl = gl.cluster_point();
-                chunks = (
-                    self.map.chunk(cl)?,
-                    Some(self.map.chunk(cl.to(Side::Down))?),
-                );
+                chunks = (self.map.chunk(cl)?, self.map.chunk(dw));
 
                 match self.map.get(gl)?.typed() {
                     Typed::Base(slab) => (slab, level),
@@ -216,6 +214,7 @@ impl Cluster {
                     trunk.set_data(storages.0.add(obj))
                 }
             } else {
+                let i = i - lo.len();
                 hi[i] = trunk.into();
 
                 if let Some(obj) = obj {
