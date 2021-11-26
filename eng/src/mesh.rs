@@ -128,14 +128,7 @@ impl<V, K> Mesh<V, K>
 where
     K: Key + ?Sized,
 {
-    pub fn new(verts: Vec<V>, indxs: Vec<u32>) -> Result<Self, Error>
-    where
-        K::Keys: Default,
-    {
-        Self::from_slots(verts, indxs, Slots::default())
-    }
-
-    pub fn from_slots(verts: Vec<V>, indxs: Vec<u32>, slots: Slots<K>) -> Result<Self, Error> {
+    pub fn new(verts: Vec<V>, indxs: Vec<u32>, slots: Slots<K>) -> Result<Self, Error> {
         // Vertices len must be a multiple of 3
         if indxs.len() % 3 != 0 {
             return Err(Error::IndxsLen(indxs.len()));

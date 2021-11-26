@@ -11,10 +11,10 @@ pub mod tiles;
 pub mod prelude {
     pub use crate::{
         chunk::Chunk,
-        cluster::{Cluster, ClusterSlice},
+        cluster::{Cluster, ClusterSlice, Placed},
         point::{ChunkPoint, ClusterPoint, GlobalPoint},
         rotation::Rotation,
         side::{Side, Sides},
-        tile::{Placement, Tile, TileIndex, Tiles, VariantIndex},
+        tile::{Placement, Tile, TileIndex, TileSet, VariantIndex},
     };
 }

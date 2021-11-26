@@ -1,11 +1,12 @@
 use crate::{
     atlas::Atlas,
     camera::TpCamera,
-    land::{Builder, Factory},
+    land::{variant::VariantSet, Factory},
     loader::Loader,
+    view::ClusterView,
     Render, Texture, Vert,
 };
-use core::prelude::{ChunkPoint, Side, Sides};
+use core::{prelude::*, tiles};
 use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
@@ -55,103 +56,91 @@ pub struct Game {
 
 impl Game {
     pub fn new(ren: &Render) -> Self {
+        let tiles = [
+            ("tile0", Box::new(tiles::Cube::new(vec!["grass"]))),
+            ("tile1", Box::new(tiles::Cube::new(vec!["grass"]))),
+            ("tile2", Box::new(tiles::Cube::new(vec!["grass"]))),
+        ];
+
+        let mut names_tiles = HashMap::new();
+        let mut tile_set = TileSet::new();
+        let mut to_variants = Vec::new();
+
         let mut sprite_names = HashMap::new();
         let mut sprites = Vec::new();
-        let mut loader = Loader::new(ren);
 
-        loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
-            let (_, name) = name.split_once('/').unwrap();
-            if sprites.is_empty() {
-                debug_assert_eq!(name, "default")
+        let polygons = {
+            let mut loader = Loader::new(ren);
+            loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
+                let (_, name) = name.split_once('/').unwrap();
+                if sprites.is_empty() {
+                    debug_assert_eq!(name, "default")
+                }
+
+                assert!(sprite_names
+                    .insert(name.to_string(), sprites.len() as u32)
+                    .is_none());
+                sprites.push(sprite);
+            });
+            loader.load_sprite("tiles/default").unwrap();
+
+            for (tile_name, tile) in tiles {
+                let index = tile_set.add(tile);
+                names_tiles.insert(tile_name, index);
+                for (i, variant_name) in tile_set.get(index).variants().iter().enumerate() {
+                    let to_variant = loader.load_variant(variant_name).unwrap();
+                    to_variants.push(((index, VariantIndex(i as u8)), to_variant));
+                }
             }
 
-            assert!(sprite_names
-                .insert(name.to_string(), sprites.len() as u32)
-                .is_none());
-            sprites.push(sprite);
-        });
-        loader.on_load_texture(|_, _| ());
-        loader.on_load_mesh(|_, _| ());
-
-        loader.load_sprite("tiles/default").unwrap();
-
-        let grass = loader.load_variant("grass").unwrap();
-        let polygons = loader.take_polygons();
-        drop(loader);
+            loader.take_polygons()
+        };
 
         let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
         let (map, mapper) = atlas.map();
         let map = ren.make_texture(&map);
-
         let mut factory = Factory::new(mapper);
-        let grass = grass
-            .to_variant(&mut factory, |sprite| {
-                let idx = match sprite {
-                    None => 0,
-                    Some(name) => match sprite_names.get(name) {
-                        None => panic!("sprite {} not found", name),
-                        Some(&idx) => idx,
-                    },
-                };
-                mapper.addition(idx) * mapper.multiplier()
-            })
-            .unwrap();
 
-        let mut builder = Builder::with_capacity(64);
-        grass.build(
-            Vec3::zero(),
-            |level, height| {
-                let pos = ChunkPoint::new(0, 0, 0).unwrap();
-                let variant_height = grass.connections().len() as u8;
-                let mut sides = Sides::empty();
-
-                for conn in grass.connections() {
-                    let _ = conn.overlaps(conn, Side::Left, &polygons);
-                    todo!()
-                }
-
-                if level + height == variant_height {
-                    sides |= Side::Up;
-                } else {
-                    match pos.to(Side::Up, level + height) {
-                        Ok(hi) => todo!(),
-                        Err(hi) => todo!(),
-                    }
-                }
-
-                if level == 0 {
-                    sides |= Side::Down;
-                } else {
-                    match pos.to(Side::Down, 1) {
-                        Ok(lo) => todo!(),
-                        Err(lo) => todo!(),
-                    }
-                }
-
-                for side in [Side::Left, Side::Right, Side::Forth, Side::Back] {
-                    let (mut curr, _) = match pos.to(side, 1) {
-                        Ok(curr) => (curr, ()),
-                        Err(curr) => (curr, ()),
+        let mut variant_set = VariantSet::new();
+        for (key, to_variant) in to_variants {
+            let variant = to_variant
+                .to_variant(&mut factory, |sprite| {
+                    let idx = match sprite {
+                        None => 0,
+                        Some(name) => match sprite_names.get(name) {
+                            None => panic!("sprite {} not found", name),
+                            Some(&idx) => idx,
+                        },
                     };
+                    mapper.addition(idx) * mapper.multiplier()
+                })
+                .unwrap();
 
-                    for _ in 0..height {
-                        let (next, _) = match curr.to(Side::Up, 1) {
-                            Ok(next) => (next, ()),
-                            Err(next) => (next, ()),
-                        };
-                        curr = next;
-                    }
-                }
+            variant_set.add(key, variant);
+        }
 
-                sides
-            },
-            &mut builder,
-        );
-        let mesh = builder.mesh(ren);
-        builder.clear();
+        let mut view = ClusterView::new(tile_set, variant_set, polygons);
+        for (x, y, z) in [
+            (0, 0, 0),
+            (1, 0, 0),
+            (0, 0, 1),
+            (0, 4, 0),
+            (0, 4, 4),
+            (4, 4, 0),
+            (4, 4, 4),
+            (4, 16, 4),
+        ] {
+            view.place(
+                GlobalPoint::from_absolute(x, y, z).unwrap(),
+                names_tiles["tile0"],
+            );
+        }
 
         Self {
-            data: Data { mesh, map },
+            data: Data {
+                mesh: view.mesh(ren, Vec3::zero(), ClusterPoint::new(0, 0, 0).unwrap()),
+                map,
+            },
             cam: TpCamera::new(1., Pnt3::origin()),
             aspect: 1.,
         }

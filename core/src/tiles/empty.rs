@@ -7,6 +7,10 @@ impl Tile for Empty {
         unreachable!()
     }
 
+    fn variants(&self) -> &[&'static str] {
+        unreachable!()
+    }
+
     fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
         unreachable!()
     }

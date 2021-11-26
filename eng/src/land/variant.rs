@@ -2,9 +2,9 @@ use crate::{
     land::{builder::Builder, shape::Shape, Connections},
     Vert,
 };
-use core::side::*;
+use core::prelude::*;
 use shr::cgm::*;
-use std::{error, fmt, rc::Rc};
+use std::{collections::HashMap, error, fmt, rc::Rc};
 
 #[derive(Debug)]
 pub(crate) enum Error {
@@ -59,6 +59,10 @@ impl Variant {
         })
     }
 
+    pub fn height(&self) -> u8 {
+        self.conn.len() as u8
+    }
+
     pub fn connections(&self) -> &[Connections] {
         &self.conn
     }
@@ -86,5 +90,26 @@ impl Variant {
             level += mesh.height;
             offset.y += 0.5 * mesh.height as f32;
         }
+    }
+}
+
+pub(crate) struct VariantSet {
+    variants: HashMap<(TileIndex, VariantIndex), Variant>,
+}
+
+impl VariantSet {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {
+            variants: HashMap::default(),
+        }
+    }
+
+    pub fn get(&self, key: (TileIndex, VariantIndex)) -> &Variant {
+        self.variants.get(&key).unwrap()
+    }
+
+    pub fn add(&mut self, key: (TileIndex, VariantIndex), variant: Variant) {
+        self.variants.entry(key).or_insert(variant);
     }
 }

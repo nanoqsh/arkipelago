@@ -27,7 +27,7 @@ fn load(mesh: RawMesh) -> Result<Mesh, mesh::Error> {
         slots,
     } = mesh;
 
-    Mesh::from_slots(
+    Mesh::new(
         verts
             .into_iter()
             .map(|raw| Vert {

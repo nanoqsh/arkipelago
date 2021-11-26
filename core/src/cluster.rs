@@ -1,9 +1,10 @@
 use crate::{
     chunk::HEIGHT,
     layout::{Data, Layout, Num},
+    point::ChunkPoints,
     prelude::*,
     slab::*,
-    tile::Tiles,
+    tile::TileSet,
 };
 use std::{any::Any, collections::HashMap, rc::Rc};
 
@@ -52,12 +53,12 @@ pub struct ClusterSlice<'a> {
 }
 
 impl<'a> ClusterSlice<'a> {
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.lo.len() + self.hi.len()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+    pub const fn is_empty(&self) -> bool {
+        false
     }
 
     pub fn index(&self) -> (TileIndex, VariantIndex) {
@@ -99,35 +100,40 @@ impl<'a> ClusterSlice<'a> {
     }
 }
 
+pub struct Placed {
+    pub variant: VariantIndex,
+    pub height: u8,
+}
+
 pub struct Cluster {
     chunks: HashMap<ClusterPoint, SlabChunk>,
-    tiles: Rc<Tiles>,
+    tile_set: Rc<TileSet>,
 }
 
 impl Cluster {
-    pub fn new(tiles: Rc<Tiles>) -> Self {
+    pub fn new(tile_set: Rc<TileSet>) -> Self {
         Self {
             chunks: HashMap::default(),
-            tiles,
+            tile_set,
         }
     }
 
-    pub fn get(&self, point: GlobalPoint) -> Option<(ClusterSlice, u8)> {
-        let chp = point.chunk_point();
-        let clp = point.cluster_point();
+    pub fn get(&self, gl: GlobalPoint) -> Option<(ClusterSlice, u8)> {
+        let ch = gl.chunk_point();
+        let cl = gl.cluster_point();
 
-        let mut chunk = self.chunks.get(&clp)?;
-        let mut curr = chp;
+        let mut chunk = self.chunks.get(&cl)?;
+        let mut curr = ch;
         let (slab, level) = match chunk.get(curr).typed() {
             Typed::Empty(_) => return None,
             Typed::Base(slab) => (slab, 0),
             Typed::Trunk(slab) => {
                 let level = slab.level();
-                curr = match chp.to(Side::Down, level) {
-                    Ok(chp) => chp,
-                    Err(chp) => {
-                        chunk = self.chunks.get(&clp.to(Side::Down))?;
-                        chp
+                curr = match ch.to(Side::Down, level) {
+                    Ok(ch) => ch,
+                    Err(ch) => {
+                        chunk = self.chunks.get(&cl.to(Side::Down))?;
+                        ch
                     }
                 };
 
@@ -150,7 +156,7 @@ impl Cluster {
             let hh = u - HEIGHT as u8;
             let lh = height - hh;
             let (x, _, z) = curr.axes();
-            let upper = self.chunks.get(&clp.to(Side::Up))?;
+            let upper = self.chunks.get(&cl.to(Side::Up))?;
 
             ClusterSlice {
                 lo: chunk.slice(curr, lh),
@@ -163,30 +169,38 @@ impl Cluster {
         Some((slice, level))
     }
 
-    pub fn place(&mut self, point: GlobalPoint, tile: TileIndex) -> bool {
-        let chp = point.chunk_point();
-        let clp = point.cluster_point();
-        let tiles = Rc::clone(&self.tiles);
+    pub fn tiles(&self, cl: ClusterPoint) -> Option<Tiles> {
+        Some(Tiles {
+            cluster: self,
+            points: ChunkPoints::new(),
+            cl,
+        })
+    }
+
+    pub fn place(&mut self, gl: GlobalPoint, tile: TileIndex) -> Option<Placed> {
+        let ch = gl.chunk_point();
+        let cl = gl.cluster_point();
+        let tiles = Rc::clone(&self.tile_set);
         let tile_obj = tiles.get(tile);
 
-        let mut chunk = self.chunk(clp);
-        let mut curr = chp;
+        let mut chunk = self.chunk(cl);
+        let mut curr = ch;
         let height = tile_obj.height();
         for _ in 0..height {
             curr = match curr.to(Side::Up, 1) {
-                Ok(chp) => chp,
-                Err(chp) => {
-                    chunk = self.chunk(clp.to(Side::Up));
-                    chp
+                Ok(ch) => ch,
+                Err(ch) => {
+                    chunk = self.chunk(cl.to(Side::Up));
+                    ch
                 }
             };
 
             if !chunk.get(curr).is_empty() {
-                return false;
+                return None;
             }
         }
 
-        let placement = tile_obj.place(self, point);
+        let placement = tile_obj.place(self, gl);
         assert_eq!(height, placement.data.len() as u8 + 1);
         let layout = Layout {
             tile,
@@ -194,15 +208,15 @@ impl Cluster {
             data: placement.data,
         };
 
-        let mut chunk = self.chunk(clp);
-        let mut curr = chp;
+        let mut chunk = self.chunk(cl);
+        let mut curr = ch;
         *chunk.get_mut(curr) = layout.base().into();
         for (mut trunk, obj) in layout.trunks() {
             curr = match curr.to(Side::Up, 1) {
-                Ok(chp) => chp,
-                Err(chp) => {
-                    chunk = self.chunk(clp.to(Side::Up));
-                    chp
+                Ok(ch) => ch,
+                Err(ch) => {
+                    chunk = self.chunk(cl.to(Side::Up));
+                    ch
                 }
             };
 
@@ -213,11 +227,42 @@ impl Cluster {
             *chunk.get_mut(curr) = trunk.into();
         }
 
-        true
+        Some(Placed {
+            variant: placement.variant,
+            height,
+        })
     }
 
-    fn chunk(&mut self, point: ClusterPoint) -> &mut SlabChunk {
-        self.chunks.entry(point).or_insert_with(SlabChunk::new)
+    fn chunk(&mut self, cl: ClusterPoint) -> &mut SlabChunk {
+        self.chunks.entry(cl).or_insert_with(SlabChunk::new)
+    }
+}
+
+pub struct Tiles<'a> {
+    cluster: &'a Cluster,
+    points: ChunkPoints,
+    cl: ClusterPoint,
+}
+
+impl<'a> Iterator for Tiles<'a> {
+    type Item = (ClusterSlice<'a>, GlobalPoint);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let ch = self.points.next()?;
+            let gl = GlobalPoint::new(ch, self.cl);
+            match self.cluster.get(gl) {
+                Some((slice, level)) => {
+                    debug_assert_eq!(level, 0);
+                    for _ in 0..slice.lo.len() - 1 {
+                        self.points.next();
+                    }
+
+                    break Some((slice, gl));
+                }
+                None => continue,
+            }
+        }
     }
 }
 
@@ -234,6 +279,10 @@ mod tests {
             4
         }
 
+        fn variants(&self) -> &[&'static str] {
+            unreachable!()
+        }
+
         fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
             Placement {
                 variant: VariantIndex(0),
@@ -243,23 +292,22 @@ mod tests {
     }
 
     fn cluster() -> (Cluster, TileIndex) {
-        let mut tiles = Tiles::new();
-        let index = tiles.add(TestTile {
+        let mut tile_set = TileSet::new();
+        let index = tile_set.add(Box::new(TestTile {
             data: Box::leak(Box::new([
                 Data::None,
                 Data::Num(Num::new(2).unwrap()),
                 Data::Obj(Rc::new(2)),
             ])),
-        });
-        (Cluster::new(Rc::new(tiles)), index)
+        }));
+        (Cluster::new(Rc::new(tile_set)), index)
     }
 
     #[test]
     fn place() {
         let (mut cluster, index) = cluster();
         let point = GlobalPoint::from_absolute(0, 0, 0).unwrap();
-        assert!(cluster.place(point, index));
-        assert!(!cluster.place(point, index));
+        cluster.place(point, index);
 
         let (slice, level) = cluster.get(point).unwrap();
         assert_eq!(slice.len(), 4);
@@ -267,7 +315,7 @@ mod tests {
         assert_eq!(level, 0);
 
         let point = GlobalPoint::from_absolute(0, 31, 0).unwrap();
-        assert!(cluster.place(point, index));
+        cluster.place(point, index);
 
         let (slice, level) = cluster.get(point).unwrap();
         assert_eq!(slice.len(), 4);
@@ -278,7 +326,7 @@ mod tests {
     #[test]
     fn get() {
         let (mut cluster, index) = cluster();
-        assert!(cluster.place(GlobalPoint::from_absolute(0, 0, 0).unwrap(), index));
+        cluster.place(GlobalPoint::from_absolute(0, 0, 0).unwrap(), index);
 
         for i in 0..4 {
             let (slice, level) = cluster
@@ -298,7 +346,7 @@ mod tests {
     fn data() {
         let (mut cluster, index) = cluster();
         let point = GlobalPoint::from_absolute(0, 0, 0).unwrap();
-        assert!(cluster.place(point, index));
+        cluster.place(point, index);
 
         let (slice, _) = cluster.get(point).unwrap();
         assert_eq!(slice.len(), 4);

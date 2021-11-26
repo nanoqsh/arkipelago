@@ -13,13 +13,20 @@ const CHUNK_HEIGHT_MAX: u8 = HEIGHT as u8 - 1;
 pub struct ChunkPoint(u16);
 
 impl ChunkPoint {
-    pub const fn new(x: u8, y: u8, z: u8) -> Result<Self, Error> {
+    pub fn new(x: u8, y: u8, z: u8) -> Result<Self, Error> {
         let (x, y, z) = match (x, y, z) {
             (0..=CHUNK_SIDE_MAX, 0..=CHUNK_HEIGHT_MAX, 0..=CHUNK_SIDE_MAX) => (x, y, z),
             _ => return Err(Error),
         };
 
-        Ok(Self(x as u16 | (y as u16) << 4 | (z as u16) << 9))
+        Ok(unsafe { Self::new_unchecked(x, y, z) })
+    }
+
+    unsafe fn new_unchecked(x: u8, y: u8, z: u8) -> Self {
+        debug_assert!(x <= CHUNK_SIDE_MAX);
+        debug_assert!(y <= CHUNK_HEIGHT_MAX);
+        debug_assert!(z <= CHUNK_SIDE_MAX);
+        Self(x as u16 | (y as u16) << 4 | (z as u16) << 9)
     }
 
     pub const fn axes(self) -> (u8, u8, u8) {
@@ -115,6 +122,43 @@ impl fmt::Display for ChunkPoint {
 impl fmt::Debug for ChunkPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+pub struct Points {
+    x: u8,
+    y: u8,
+    z: u8,
+}
+
+impl Points {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self { x: 0, y: 0, z: 0 }
+    }
+}
+
+impl Iterator for Points {
+    type Item = ChunkPoint;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let point = unsafe { ChunkPoint::new_unchecked(self.x, self.y, self.z) };
+
+        self.y += 1;
+        if self.y == HEIGHT as u8 {
+            self.y = 0;
+            self.z += 1;
+            if self.z == SIDE as u8 {
+                self.z = 0;
+                self.x += 1;
+                if self.x == SIDE as u8 {
+                    self.x = 0;
+                    return None;
+                }
+            }
+        }
+
+        Some(point)
     }
 }
 
