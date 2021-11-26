@@ -6,29 +6,50 @@ use crate::{
     slab::*,
     tile::TileSet,
 };
-use std::{any::Any, rc::Rc};
+use std::{any::Any, cell::RefCell, rc::Rc};
+
+#[derive(Clone)]
+struct Storage {
+    data: Rc<RefCell<Vec<Rc<dyn Any>>>>,
+}
+
+impl Storage {
+    fn new() -> Self {
+        Self {
+            data: Rc::new(RefCell::new(Vec::default())),
+        }
+    }
+
+    fn get(&self, idx: u16) -> Rc<dyn Any> {
+        let data = self.data.borrow();
+        Rc::clone(&data[idx as usize])
+    }
+
+    fn add(&self, obj: Rc<dyn Any>) -> u16 {
+        let mut data = self.data.borrow_mut();
+        let idx = data.len();
+        data.push(obj);
+        idx as u16
+    }
+}
 
 struct SlabChunk {
     slabs: Chunk<Slab>,
-    data: Vec<Rc<dyn Any>>,
+    storage: Storage,
 }
 
 impl SlabChunk {
     fn new() -> Self {
         Self {
             slabs: Chunk::filled(Empty.into()),
-            data: Vec::default(),
+            storage: Storage::new(),
         }
     }
+}
 
-    fn get_obj(&self, idx: u16) -> Rc<dyn Any> {
-        Rc::clone(&self.data[idx as usize])
-    }
-
-    fn add_obj(&mut self, obj: Rc<dyn Any>) -> u16 {
-        let idx = self.data.len();
-        self.data.push(obj);
-        idx as u16
+impl Default for SlabChunk {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -81,7 +102,7 @@ impl<'a> ClusterSlice<'a> {
                         self.chunks.1.unwrap()
                     };
 
-                    Data::Obj(chunk.get_obj(data))
+                    Data::Obj(chunk.storage.get(data))
                 } else {
                     Data::Num(Num::new(data).unwrap())
                 }
@@ -162,9 +183,8 @@ impl Cluster {
     pub fn place(&mut self, gl: GlobalPoint, tile: TileIndex) -> Option<Placed> {
         let tiles = Rc::clone(&self.tile_set);
         let tile_obj = tiles.get(tile);
-
         let height = tile_obj.height();
-        let (lo, hi) = self.map.slice_mut(gl, height)?;
+        let (lo, hi) = self.map.slice_mut(gl, height);
         if !lo.iter().chain(hi.iter()).copied().all(Slab::is_empty) {
             return None;
         }
@@ -178,22 +198,29 @@ impl Cluster {
         };
 
         let cl = gl.cluster_point();
-        let mut chunk = self.map.chunk(cl)?;
+        let storages = (
+            self.map.chunk(cl).unwrap().storage.clone(),
+            self.map
+                .chunk(cl.to(Side::Up))
+                .map(|chunk| chunk.storage.clone()),
+        );
+
+        let (lo, hi) = self.map.slice_mut(gl, height);
         lo[0] = layout.base().into();
         for (i, (mut trunk, obj)) in layout.trunks().enumerate() {
             let i = i + 1;
             if i < lo.len() {
                 lo[i] = trunk.into();
-            } else {
-                if i == lo.len() {
-                    chunk = self.map.chunk(cl.to(Side::Up))?;
+
+                if let Some(obj) = obj {
+                    trunk.set_data(storages.0.add(obj))
                 }
-
+            } else {
                 hi[i] = trunk.into();
-            }
 
-            if let Some(obj) = obj {
-                trunk.set_data(chunk.add_obj(obj))
+                if let Some(obj) = obj {
+                    trunk.set_data(storages.1.as_ref().unwrap().add(obj))
+                }
             }
         }
 
