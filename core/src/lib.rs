@@ -15,6 +15,6 @@ pub mod prelude {
         point::{ChunkPoint, ClusterPoint, GlobalPoint},
         rotation::Rotation,
         side::{Side, Sides},
-        tile::{Placement, Tile, TileIndex, Tiles},
+        tile::{Placement, Tile, TileIndex, Tiles, VariantIndex},
     };
 }

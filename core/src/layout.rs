@@ -1,4 +1,7 @@
-use crate::{tile::TileIndex, slab::*};
+use crate::{
+    slab::*,
+    tile::{TileIndex, VariantIndex},
+};
 use std::{any::Any, rc::Rc};
 
 #[derive(Copy, Clone)]
@@ -24,10 +27,26 @@ pub enum Data {
     Obj(Rc<dyn Any>),
 }
 
+impl Data {
+    pub fn as_num(self) -> Num {
+        match self {
+            Data::Num(num) => num,
+            _ => panic!("expected num"),
+        }
+    }
+
+    pub fn as_obj(self) -> Rc<dyn Any> {
+        match self {
+            Data::Obj(obj) => obj,
+            _ => panic!("expected obj"),
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub(crate) struct Layout<'a> {
     pub tile: TileIndex,
-    pub variant: u8,
+    pub variant: VariantIndex,
     pub data: &'a [Data],
 }
 

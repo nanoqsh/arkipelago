@@ -1,4 +1,10 @@
-use crate::{chunk::HEIGHT, layout::Layout, prelude::*, slab::*, tile::Tiles};
+use crate::{
+    chunk::HEIGHT,
+    layout::{Data, Layout, Num},
+    prelude::*,
+    slab::*,
+    tile::Tiles,
+};
 use std::{any::Any, collections::HashMap, rc::Rc};
 
 struct SlabChunk {
@@ -12,6 +18,10 @@ impl SlabChunk {
             slabs: Chunk::filled(Empty.into()),
             data: Vec::default(),
         }
+    }
+
+    fn get_obj(&self, idx: u16) -> Rc<dyn Any> {
+        Rc::clone(&self.data[idx as usize])
     }
 
     fn add_obj(&mut self, obj: Rc<dyn Any>) -> u16 {
@@ -38,6 +48,7 @@ impl std::ops::DerefMut for SlabChunk {
 pub struct ClusterSlice<'a> {
     lo: &'a [Slab],
     hi: &'a [Slab],
+    chunks: (&'a SlabChunk, Option<&'a SlabChunk>),
 }
 
 impl<'a> ClusterSlice<'a> {
@@ -49,11 +60,42 @@ impl<'a> ClusterSlice<'a> {
         self.len() == 0
     }
 
-    pub fn tile(&self) -> TileIndex {
+    pub fn index(&self) -> (TileIndex, VariantIndex) {
         match self.lo[0].typed() {
-            Typed::Base(base) => base.tile(),
+            Typed::Base(base) => (base.tile(), base.variant()),
             _ => unreachable!(),
         }
+    }
+
+    pub fn data(&self, level: u8) -> Data {
+        let level = level as usize;
+        let slab = self.get(level);
+        match slab.typed() {
+            Typed::Empty(_) => unreachable!(),
+            Typed::Base(_) => Data::None,
+            Typed::Trunk(trunk) => {
+                let data = trunk.data();
+                if trunk.is_obj() {
+                    let chunk = if level < self.lo.len() {
+                        self.chunks.0
+                    } else {
+                        self.chunks.1.unwrap()
+                    };
+
+                    Data::Obj(chunk.get_obj(data))
+                } else {
+                    Data::Num(Num::new(data).unwrap())
+                }
+            }
+        }
+    }
+
+    fn get(&self, level: usize) -> Slab {
+        *self
+            .lo
+            .get(level)
+            .or_else(|| self.hi.get(level - self.lo.len()))
+            .unwrap()
     }
 }
 
@@ -89,7 +131,7 @@ impl Cluster {
                     }
                 };
 
-                match chunk.get(chp).typed() {
+                match chunk.get(curr).typed() {
                     Typed::Base(slab) => (slab, level),
                     _ => unreachable!(),
                 }
@@ -102,19 +144,21 @@ impl Cluster {
             ClusterSlice {
                 lo: chunk.slice(curr, height),
                 hi: &[],
+                chunks: (chunk, None),
             }
         } else {
             let hh = u - HEIGHT as u8;
             let lh = height - hh;
             let (x, _, z) = curr.axes();
+            let upper = self.chunks.get(&clp.to(Side::Up))?;
+
             ClusterSlice {
                 lo: chunk.slice(curr, lh),
-                hi: self
-                    .chunks
-                    .get(&clp.to(Side::Up))?
-                    .slice(ChunkPoint::new(x, 0, z).unwrap(), hh),
+                hi: upper.slice(ChunkPoint::new(x, 0, z).unwrap(), hh),
+                chunks: (chunk, Some(upper)),
             }
         };
+        debug_assert!((0..slice.len()).all(|l| !slice.get(l).is_empty()));
 
         Some((slice, level))
     }
@@ -180,7 +224,6 @@ impl Cluster {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::{Data, Num};
 
     struct TestTile {
         data: &'static [Data],
@@ -193,14 +236,13 @@ mod tests {
 
         fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
             Placement {
-                variant: 0,
+                variant: VariantIndex(0),
                 data: &self.data,
             }
         }
     }
 
-    #[test]
-    fn cluster() {
+    fn cluster() -> (Cluster, TileIndex) {
         let mut tiles = Tiles::new();
         let index = tiles.add(TestTile {
             data: Box::leak(Box::new([
@@ -209,29 +251,60 @@ mod tests {
                 Data::Obj(Rc::new(2)),
             ])),
         });
-        let mut cluster = Cluster::new(Rc::new(tiles));
+        (Cluster::new(Rc::new(tiles)), index)
+    }
+
+    #[test]
+    fn place() {
+        let (mut cluster, index) = cluster();
         let point = GlobalPoint::from_absolute(0, 0, 0).unwrap();
         assert!(cluster.place(point, index));
         assert!(!cluster.place(point, index));
 
         let (slice, level) = cluster.get(point).unwrap();
         assert_eq!(slice.len(), 4);
-        assert_eq!(slice.tile(), index);
+        assert_eq!(slice.index(), (index, VariantIndex(0)));
         assert_eq!(level, 0);
-
-        assert!(cluster
-            .get(GlobalPoint::from_absolute(1, 0, 0).unwrap())
-            .is_none());
-        assert!(cluster
-            .get(GlobalPoint::from_absolute(0, 0, 1).unwrap())
-            .is_none());
 
         let point = GlobalPoint::from_absolute(0, 31, 0).unwrap();
         assert!(cluster.place(point, index));
 
         let (slice, level) = cluster.get(point).unwrap();
         assert_eq!(slice.len(), 4);
-        assert_eq!(slice.tile(), index);
+        assert_eq!(slice.index(), (index, VariantIndex(0)));
         assert_eq!(level, 0);
+    }
+
+    #[test]
+    fn get() {
+        let (mut cluster, index) = cluster();
+        assert!(cluster.place(GlobalPoint::from_absolute(0, 0, 0).unwrap(), index));
+
+        for i in 0..4 {
+            let (slice, level) = cluster
+                .get(GlobalPoint::from_absolute(0, i, 0).unwrap())
+                .unwrap();
+            assert_eq!(slice.len(), 4);
+            assert_eq!(slice.index(), (index, VariantIndex(0)));
+            assert_eq!(level, i as u8);
+        }
+
+        assert!(cluster
+            .get(GlobalPoint::from_absolute(1, 0, 0).unwrap())
+            .is_none());
+    }
+
+    #[test]
+    fn data() {
+        let (mut cluster, index) = cluster();
+        let point = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        assert!(cluster.place(point, index));
+
+        let (slice, _) = cluster.get(point).unwrap();
+        assert_eq!(slice.len(), 4);
+        assert!(matches!(slice.data(0), Data::None));
+        assert_eq!(slice.data(1).as_num().get(), 0);
+        assert_eq!(slice.data(2).as_num().get(), 2);
+        assert_eq!(slice.data(3).as_obj().downcast_ref::<i32>(), Some(&2));
     }
 }

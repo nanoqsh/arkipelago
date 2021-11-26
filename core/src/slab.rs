@@ -1,4 +1,4 @@
-use crate::tile::TileIndex;
+use crate::tile::{TileIndex, VariantIndex};
 
 /// Slab layout.
 ///
@@ -59,26 +59,23 @@ pub(crate) enum Typed {
 #[derive(Copy, Clone)]
 pub(crate) struct Empty;
 
-impl Empty {
-    pub const fn new() -> Self {
-        Self
-    }
-}
-
 #[derive(Copy, Clone)]
 pub(crate) struct Base(u16, u16);
 
 impl Base {
-    pub const fn new(tile: TileIndex, variant: u8, height: u8) -> Self {
-        Self(tile.get(), variant as u16 | ((height - 1) as u16) << 8)
+    pub const fn new(tile: TileIndex, variant: VariantIndex, height: u8) -> Self {
+        Self(
+            tile.get(),
+            variant.get() as u16 | ((height - 1) as u16) << 8,
+        )
     }
 
     pub const fn tile(self) -> TileIndex {
         TileIndex(self.0)
     }
 
-    pub const fn variant(self) -> u8 {
-        self.1 as u8
+    pub const fn variant(self) -> VariantIndex {
+        VariantIndex(self.1 as u8)
     }
 
     pub const fn height(self) -> u8 {
@@ -96,10 +93,6 @@ impl Trunk {
             b |= 1 << 12;
         }
         Self(tile.get(), b)
-    }
-
-    pub const fn tile(self) -> TileIndex {
-        TileIndex(self.0)
     }
 
     pub const fn is_obj(self) -> bool {

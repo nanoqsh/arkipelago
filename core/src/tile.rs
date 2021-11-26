@@ -2,7 +2,7 @@ use crate::{layout::Data, prelude::*};
 use std::fmt;
 
 pub struct Placement<'a> {
-    pub variant: u8,
+    pub variant: VariantIndex,
     pub data: &'a [Data],
 }
 
@@ -28,6 +28,27 @@ impl fmt::Display for TileIndex {
 }
 
 impl fmt::Debug for TileIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct VariantIndex(pub u8);
+
+impl VariantIndex {
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+}
+
+impl fmt::Display for VariantIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "variant: {}", self.0)
+    }
+}
+
+impl fmt::Debug for VariantIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
