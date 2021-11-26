@@ -6,14 +6,15 @@ pub mod rotation;
 pub mod side;
 mod slab;
 mod tile;
+pub mod tiles;
 
 pub mod prelude {
     pub use crate::{
         chunk::Chunk,
-        cluster::Cluster,
+        cluster::{Cluster, ClusterSlice},
         point::{ChunkPoint, ClusterPoint, GlobalPoint},
         rotation::Rotation,
         side::{Side, Sides},
-        tile::{Tile, Tiles},
+        tile::{Placement, Tile, TileIndex, Tiles},
     };
 }

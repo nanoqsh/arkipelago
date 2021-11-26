@@ -1,18 +1,19 @@
+use crate::tile::TileIndex;
+
 /// Slab layout.
 ///
 /// Can be a empty, base or truck.
 /// Empty -> all bits are 0.
-/// Base -> tttttttt_tttttttt_lll00hhh_vvvvvvvv
+/// Base -> tttttttt_tttttttt_00000hhh_vvvvvvvv
 /// where
 ///     t: tile
-///     l: level (always 0 for base)
 ///     h: height (actual height - 1)
 ///     v: variant
 /// Trunk -> tttttttt_tttttttt_lllodddd_dddddddd
 /// where
 ///     t: tile
 ///     o: obj
-///     l: level
+///     l: level (always > 0)
 ///     d: data
 #[derive(Copy, Clone)]
 pub(crate) struct Slab(u16, u16);
@@ -68,24 +69,20 @@ impl Empty {
 pub(crate) struct Base(u16, u16);
 
 impl Base {
-    pub const fn new(tile: u16, variant: u8, height: u8) -> Self {
-        Self(tile, variant as u16 | ((height - 1) as u16) << 8)
+    pub const fn new(tile: TileIndex, variant: u8, height: u8) -> Self {
+        Self(tile.get(), variant as u16 | ((height - 1) as u16) << 8)
     }
 
-    pub const fn tile(self) -> u16 {
-        self.0
+    pub const fn tile(self) -> TileIndex {
+        TileIndex(self.0)
     }
 
     pub const fn variant(self) -> u8 {
         self.1 as u8
     }
 
-    pub const fn level(self) -> u8 {
-        (self.1 >> 13) as u8 & 0b111
-    }
-
     pub const fn height(self) -> u8 {
-        (self.1 >> 8) as u8 & 0b111
+        ((self.1 >> 8) as u8 & 0b111) + 1
     }
 }
 
@@ -93,16 +90,16 @@ impl Base {
 pub(crate) struct Trunk(u16, u16);
 
 impl Trunk {
-    pub const fn new(tile: u16, data: u16, obj: bool, level: u8) -> Self {
+    pub const fn new(tile: TileIndex, data: u16, obj: bool, level: u8) -> Self {
         let mut b = data | (level as u16) << 13;
         if obj {
             b |= 1 << 12;
         }
-        Self(tile, b)
+        Self(tile.get(), b)
     }
 
-    pub const fn tile(self) -> u16 {
-        self.0
+    pub const fn tile(self) -> TileIndex {
+        TileIndex(self.0)
     }
 
     pub const fn is_obj(self) -> bool {

@@ -1,4 +1,4 @@
-use crate::{slab::*, tile::Tiles};
+use crate::{tile::TileIndex, slab::*};
 use std::{any::Any, rc::Rc};
 
 #[derive(Copy, Clone)]
@@ -26,20 +26,12 @@ pub enum Data {
 
 #[derive(Copy, Clone)]
 pub(crate) struct Layout<'a> {
-    pub tile: u16,
+    pub tile: TileIndex,
     pub variant: u8,
     pub data: &'a [Data],
 }
 
 impl<'a> Layout<'a> {
-    pub fn new(tiles: &'a Tiles, tile: u16, variant: u8) -> Self {
-        Self {
-            tile,
-            variant,
-            data: tiles.get(tile).data(variant),
-        }
-    }
-
     pub fn height(&self) -> u8 {
         self.data.len() as u8 + 1
     }
