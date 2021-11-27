@@ -67,9 +67,9 @@ impl Variant {
         &self.conn
     }
 
-    pub fn build<S>(&self, mut offset: Vec3, sides: S, builder: &mut Builder)
+    pub fn build<S>(&self, mut offset: Vec3, mut sides: S, builder: &mut Builder)
     where
-        S: Fn(u8, u8) -> Sides,
+        S: FnMut(u8, u8) -> Sides,
     {
         let mut level = 0;
         for mesh in self.meshes.iter() {

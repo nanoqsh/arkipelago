@@ -1,9 +1,8 @@
 use crate::{
     atlas::Atlas,
     camera::TpCamera,
-    land::{variant::VariantSet, Factory},
+    land::{variant::VariantSet, ClusterView, Factory},
     loader::Loader,
-    view::ClusterView,
     Render, Texture, Vert,
 };
 use core::{prelude::*, tiles};
@@ -57,9 +56,9 @@ pub struct Game {
 impl Game {
     pub fn new(ren: &Render) -> Self {
         let tiles = [
-            ("tile0", Box::new(tiles::Cube::new(vec!["grass"]))),
-            ("tile1", Box::new(tiles::Cube::new(vec!["grass"]))),
-            ("tile2", Box::new(tiles::Cube::new(vec!["grass"]))),
+            ("tile0", Box::new(tiles::Cube::new(vec!["cube"]))),
+            ("tile1", Box::new(tiles::Cube::new(vec!["cube"]))),
+            ("tile2", Box::new(tiles::Cube::new(vec!["cube"]))),
         ];
 
         let mut names_tiles = HashMap::new();
@@ -120,20 +119,29 @@ impl Game {
         }
 
         let mut view = ClusterView::new(tile_set, variant_set, polygons);
-        for (x, y, z) in [
+        let skip = [
             (0, 0, 0),
-            (1, 0, 0),
-            (0, 0, 1),
-            (0, 4, 0),
-            (0, 4, 4),
-            (4, 4, 0),
+            (2, 2, 2),
+            (2, 2, 4),
+            (4, 2, 4),
             (4, 4, 4),
-            (4, 16, 4),
-        ] {
-            view.place(
-                GlobalPoint::from_absolute(x, y, z).unwrap(),
-                names_tiles["tile0"],
-            );
+            (4, 6, 4),
+            (4, 8, 4),
+        ];
+
+        for x in 0..16 {
+            for z in 0..16 {
+                for y in (0..32).step_by(2) {
+                    if skip.contains(&(x, y, z)) || y == 12 || z % 3 == 0 {
+                        continue;
+                    }
+
+                    view.place(
+                        GlobalPoint::from_absolute(x, y, z).unwrap(),
+                        names_tiles["tile0"],
+                    );
+                }
+            }
         }
 
         Self {

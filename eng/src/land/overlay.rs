@@ -84,3 +84,9 @@ impl Connections {
         a.overlaps(b, |a, b| man.eq(a, b))
     }
 }
+
+impl Default for Connections {
+    fn default() -> Self {
+        Self::new()
+    }
+}

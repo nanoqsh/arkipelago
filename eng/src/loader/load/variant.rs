@@ -118,7 +118,7 @@ impl ToVariant {
                                 })
                                 .collect(),
                         })
-                        .unwrap_or_default(),
+                        .unwrap_or_else(|| vec![st(None); mesh.slots().len()].into_boxed_slice()),
                     height: *height,
                 };
 

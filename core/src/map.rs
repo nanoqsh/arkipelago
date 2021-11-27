@@ -93,10 +93,58 @@ impl<T> Map<T> {
     {
         self.chunks.entry(cl).or_insert_with(T::default)
     }
+
+    pub fn vicinity(&self, cl: ClusterPoint) -> Option<Vicinity<T>> {
+        Some(Vicinity {
+            chunks: [None; 10],
+            center: self.chunk(cl)?,
+            map: self,
+            cl,
+        })
+    }
 }
 
 impl<T> Default for Map<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct Vicinity<'a, T> {
+    chunks: [Option<Option<&'a T>>; 10],
+    center: &'a T,
+    map: &'a Map<T>,
+    cl: ClusterPoint,
+}
+
+impl<'a, T> Vicinity<'a, T> {
+    pub fn center(&self) -> &'a T {
+        self.center
+    }
+
+    pub fn from(&mut self, side: Side) -> Option<&'a T> {
+        self.fetch(side as usize, side)
+    }
+
+    pub fn from_upper(&mut self, side: Side) -> Option<&'a T> {
+        let idx = match side {
+            Side::Left => 0,
+            Side::Right => 1,
+            Side::Forth => 2,
+            Side::Back => 3,
+            _ => panic!("wrong side"),
+        };
+
+        self.fetch(idx + 6, side)
+    }
+
+    fn fetch(&mut self, idx: usize, side: Side) -> Option<&'a T> {
+        match &mut self.chunks[idx] {
+            Some(from) => *from,
+            cell @ None => {
+                *cell = Some(self.map.chunk(self.cl.to(side)));
+                cell.unwrap()
+            }
+        }
     }
 }

@@ -6,7 +6,6 @@ mod land;
 mod loader;
 mod mesh;
 mod render;
-mod view;
 
 pub use self::{
     game::{Control, Game},

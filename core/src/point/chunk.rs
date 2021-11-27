@@ -112,6 +112,13 @@ impl From<ChunkPoint> for UVec3 {
     }
 }
 
+impl From<ChunkPoint> for Vec3 {
+    fn from(point: ChunkPoint) -> Self {
+        let (x, y, z) = point.axes();
+        Self::new(x as f32, y as f32, z as f32)
+    }
+}
+
 impl fmt::Display for ChunkPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (x, y, z) = self.axes();
@@ -129,12 +136,18 @@ pub struct Points {
     x: u8,
     y: u8,
     z: u8,
+    run: bool,
 }
 
 impl Points {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self { x: 0, y: 0, z: 0 }
+        Self {
+            x: 0,
+            y: 0,
+            z: 0,
+            run: true,
+        }
     }
 }
 
@@ -142,6 +155,10 @@ impl Iterator for Points {
     type Item = ChunkPoint;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if !self.run {
+            return None;
+        }
+
         let point = unsafe { ChunkPoint::new_unchecked(self.x, self.y, self.z) };
 
         self.y += 1;
@@ -152,7 +169,7 @@ impl Iterator for Points {
                 self.z = 0;
                 self.x += 1;
                 if self.x == SIDE as u8 {
-                    self.x = 0;
+                    self.run = false;
                     return None;
                 }
             }
