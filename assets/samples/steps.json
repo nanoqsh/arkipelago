@@ -1,16 +1,20 @@
 {
     "mesh": {
-        "name": "step",
-        "height": 1,
+        "name": "steps",
+        "height": 2,
         "contact": {
             "left": "l",
             "right": "r",
             "up": "u",
             "down": "d",
+            "forth": "f",
             "back": "b"
         }
     },
     "overlay": [
+        {
+            "lrdfb": "full"
+        },
         {
             "b": "full",
             "l": [

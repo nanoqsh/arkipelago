@@ -57,8 +57,16 @@ impl Game {
     pub fn new(ren: &Render) -> Self {
         let tiles = [
             ("cube", Box::new(tiles::Base::new(2, vec!["cube"]))),
-            ("bevel", Box::new(tiles::Base::new(1, vec!["bevel"]))),
-            ("steps", Box::new(tiles::Base::new(2, vec!["steps"]))),
+            ("slab", Box::new(tiles::Base::new(1, vec!["slab"]))),
+            ("half", Box::new(tiles::Base::new(1, vec!["half"]))),
+            ("bevel_0", Box::new(tiles::Base::new(1, vec!["bevel"]))),
+            ("bevel_1", Box::new(tiles::Base::new(1, vec!["bevel_q1"]))),
+            ("bevel_2", Box::new(tiles::Base::new(1, vec!["bevel_q2"]))),
+            ("bevel_3", Box::new(tiles::Base::new(1, vec!["bevel_q3"]))),
+            ("steps_0", Box::new(tiles::Base::new(2, vec!["steps"]))),
+            ("steps_1", Box::new(tiles::Base::new(2, vec!["steps_q1"]))),
+            ("steps_2", Box::new(tiles::Base::new(2, vec!["steps_q2"]))),
+            ("steps_3", Box::new(tiles::Base::new(2, vec!["steps_q3"]))),
         ];
 
         let mut names_tiles = HashMap::new();
@@ -68,7 +76,7 @@ impl Game {
         let mut sprite_names = HashMap::new();
         let mut sprites = Vec::new();
 
-        let polygons = {
+        let mut polygons = {
             let mut loader = Loader::new(ren);
             loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
                 let (_, name) = name.split_once('/').unwrap();
@@ -103,7 +111,7 @@ impl Game {
         let mut variant_set = VariantSet::new();
         for (key, to_variant) in to_variants {
             let variant = to_variant
-                .to_variant(&mut factory, |sprite| {
+                .to_variant(&mut factory, &mut polygons, |sprite| {
                     let idx = match sprite {
                         None => 0,
                         Some(name) => match sprite_names.get(name) {
@@ -120,15 +128,29 @@ impl Game {
 
         let mut view = ClusterView::new(tile_set, variant_set, polygons);
         for (name, (x, y, z)) in [
-            ("cube", (1, 0, 0)),
-            ("cube", (1, 0, 1)),
-            ("cube", (1, 0, 2)),
-            ("steps", (0, 0, 0)),
-            ("steps", (2, 0, 0)),
-            ("steps", (0, 0, 1)),
-            ("steps", (2, 0, 1)),
-            ("bevel", (0, 0, 2)),
-            ("bevel", (2, 0, 2)),
+            ("cube", (2, 0, 0)),
+            ("cube", (2, 0, 1)),
+            ("slab", (0, 0, 0)),
+            ("slab", (4, 0, 0)),
+            ("half", (0, 1, 0)),
+            ("half", (4, 1, 0)),
+            ("steps_1", (0, 0, 1)),
+            ("steps_3", (1, 0, 1)),
+            ("steps_1", (3, 0, 1)),
+            ("steps_3", (4, 0, 1)),
+            ("bevel_0", (1, 0, 2)),
+            ("bevel_0", (2, 0, 2)),
+            ("bevel_0", (3, 0, 2)),
+            ("bevel_1", (1, 0, 4)),
+            ("bevel_3", (0, 0, 4)),
+            ("bevel_0", (3, 0, 5)),
+            ("bevel_2", (3, 0, 4)),
+            ("bevel_0", (5, 0, 6)),
+            ("slab", (5, 0, 5)),
+            ("bevel_2", (5, 0, 4)),
+            ("half", (5, 0, 0)),
+            ("half", (5, 1, 0)),
+            ("half", (5, 2, 0)),
         ] {
             view.place(
                 GlobalPoint::from_absolute(x, y, z).unwrap(),
@@ -162,7 +184,10 @@ impl Game {
         match control {
             Control::Look(x, y) => self.cam.rotate(Vec2::new(x, y) * SENSITIVITY),
             Control::Scroll(_, y) => self.cam.move_to(y),
-            _ => {}
+            Control::Forward => self.cam.move_look(Vec3::new(1., 0., 0.)),
+            Control::Back => self.cam.move_look(Vec3::new(-1., 0., 0.)),
+            Control::Left => self.cam.move_look(Vec3::new(0., 0., 1.)),
+            Control::Right => self.cam.move_look(Vec3::new(0., 0., -1.)),
         }
     }
 }

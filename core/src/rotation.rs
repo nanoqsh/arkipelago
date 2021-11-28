@@ -38,6 +38,14 @@ impl Rotation {
         })
     }
 
+    pub const fn inverted(self) -> Self {
+        match self {
+            Self::Q1 => Self::Q3,
+            Self::Q3 => Self::Q1,
+            _ => self,
+        }
+    }
+
     pub fn transform_vec(self, vec: Vec3) -> Vec3 {
         match self {
             Self::Q0 => vec,
@@ -51,27 +59,27 @@ impl Rotation {
         match side {
             Side::Left => match self {
                 Self::Q0 => Side::Left,
-                Self::Q1 => Side::Forth,
+                Self::Q1 => Side::Back,
                 Self::Q2 => Side::Right,
-                Self::Q3 => Side::Back,
+                Self::Q3 => Side::Forth,
             },
             Side::Right => match self {
                 Self::Q0 => Side::Right,
-                Self::Q1 => Side::Back,
+                Self::Q1 => Side::Forth,
                 Self::Q2 => Side::Left,
-                Self::Q3 => Side::Forth,
+                Self::Q3 => Side::Back,
             },
             Side::Forth => match self {
                 Self::Q0 => Side::Forth,
-                Self::Q1 => Side::Right,
+                Self::Q1 => Side::Left,
                 Self::Q2 => Side::Back,
-                Self::Q3 => Side::Left,
+                Self::Q3 => Side::Right,
             },
             Side::Back => match self {
                 Self::Q0 => Side::Back,
-                Self::Q1 => Side::Left,
+                Self::Q1 => Side::Right,
                 Self::Q2 => Side::Forth,
-                Self::Q3 => Side::Right,
+                Self::Q3 => Side::Left,
             },
             _ => side,
         }

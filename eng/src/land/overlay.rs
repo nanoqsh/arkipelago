@@ -25,7 +25,7 @@ impl Overlay {
         P: Fn(u16, u16) -> bool,
     {
         match (self, rhs) {
-            (Self::NONE, _) => false,
+            (Self::NONE, b) => b == Self::NONE,
             (Self::FULL, _) | (_, Self::NONE) => true,
             (_, Self::FULL) => false,
             (a, b) => p(a.0, b.0),
@@ -61,7 +61,7 @@ impl Connections {
         self.0[side as usize]
     }
 
-    pub fn rotated(mut self, rotation: Rotation) -> Self {
+    pub fn rotated(mut self, rotation: Rotation, man: &mut Polygons) -> Self {
         match rotation {
             Rotation::Q0 => self,
             Rotation::Q1 | Rotation::Q2 | Rotation::Q3 => {
@@ -74,6 +74,23 @@ impl Connections {
                 self.set(rotation.rotate(Side::Right), right);
                 self.set(rotation.rotate(Side::Forth), forth);
                 self.set(rotation.rotate(Side::Back), back);
+
+                for side in [Side::Up, Side::Down] {
+                    match self.get(side) {
+                        Overlay::NONE | Overlay::FULL => (),
+                        over => self.set(
+                            side,
+                            Overlay::from_polygon(
+                                match man.get(over.0).rotated(rotation) {
+                                    Ok(new) => new,
+                                    Err(_) => continue,
+                                },
+                                man,
+                            ),
+                        ),
+                    }
+                }
+
                 self
             }
         }

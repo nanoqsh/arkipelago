@@ -1,0 +1,9 @@
+{
+    "samples": [
+        {
+            "name": "bevel",
+            "rotation": 3
+        }
+    ],
+    "sprite": "default"
+}

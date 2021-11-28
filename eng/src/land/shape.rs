@@ -124,7 +124,10 @@ impl Shape {
                         slotted.push(Slotted {
                             face,
                             slot,
-                            contact,
+                            contact: contact
+                                .into_iter()
+                                .map(|side| rotation.rotate(side))
+                                .collect(),
                         })
                     }
                 }

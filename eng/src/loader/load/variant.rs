@@ -82,11 +82,17 @@ pub(crate) struct ToVariant {
 }
 
 impl ToVariant {
-    pub fn to_variant<S>(&self, factory: &mut Factory, st: S) -> Result<Variant, variant::Error>
+    pub fn to_variant<S>(
+        &self,
+        factory: &mut Factory,
+        man: &mut Polygons,
+        st: S,
+    ) -> Result<Variant, variant::Error>
     where
         S: Fn(Option<&str>) -> Vec2,
     {
         let factory = RefCell::new(factory);
+        let man = RefCell::new(man);
         Variant::new(
             self.samples.iter().map(|info| {
                 let ToShape {
@@ -131,7 +137,7 @@ impl ToVariant {
                         .conn
                         .iter()
                         .copied()
-                        .map(|conn| conn.rotated(info.rotation)),
+                        .map(|conn| conn.rotated(info.rotation, &mut man.borrow_mut())),
                 )
             }),
             st(self.sprite.as_deref()),

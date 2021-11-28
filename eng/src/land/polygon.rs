@@ -1,3 +1,4 @@
+use core::prelude::Rotation;
 use serde::Deserialize;
 use std::{error, fmt};
 
@@ -26,6 +27,15 @@ impl Point {
     fn flipped(self) -> Self {
         Self(1. - self.0, self.1)
     }
+
+    fn rotated(self, rotation: Rotation) -> Self {
+        match rotation {
+            Rotation::Q0 => self,
+            Rotation::Q1 => Self(self.1, self.0),
+            Rotation::Q2 => self.flipped(),
+            Rotation::Q3 => Self(self.1, self.0).flipped(),
+        }
+    }
 }
 
 impl TryFrom<(f32, f32)> for Point {
@@ -40,7 +50,7 @@ impl TryFrom<(f32, f32)> for Point {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(try_from = "Box<[Point]>")]
 pub(crate) struct Polygon {
     points: Box<[Point]>,
@@ -55,15 +65,43 @@ impl Polygon {
         let points = points.into();
         match points[..] {
             [] => Err(Error::Empty),
-            _ => Ok(Self {
-                points,
-                y_symmetric: false,
-            }),
+            _ => {
+                let mut polygon = Self {
+                    points,
+                    y_symmetric: false,
+                };
+
+                polygon.y_symmetric = polygon == polygon.flipped();
+                Ok(polygon)
+            }
         }
     }
 
     pub fn flipped(&self) -> Flipped {
         Flipped(self)
+    }
+
+    pub fn rotated(&self, rotation: Rotation) -> Result<Self, &Self> {
+        match rotation {
+            Rotation::Q0 => return Err(self),
+            Rotation::Q2 if self.y_symmetric => return Err(self),
+            _ => (),
+        }
+
+        let mut new = self.clone();
+        for point in new.points.iter_mut() {
+            *point = point.rotated(rotation);
+        }
+
+        if let Rotation::Q1 = rotation {
+            new.points.reverse();
+        }
+
+        if let Rotation::Q1 | Rotation::Q3 = rotation {
+            new.y_symmetric = new == new.flipped();
+        }
+
+        Ok(new)
     }
 
     fn eq<R>(&self, mut rhs: R) -> bool
@@ -143,7 +181,7 @@ impl Polygons {
         lhs == &rhs.flipped()
     }
 
-    fn get(&self, idx: u16) -> &Polygon {
+    pub fn get(&self, idx: u16) -> &Polygon {
         self.0.get(idx as usize).unwrap()
     }
 }
@@ -228,5 +266,31 @@ mod tests {
         .unwrap();
         assert_eq!(a, b);
         assert_eq!(a, b.flipped());
+    }
+
+    #[test]
+    fn rotation() {
+        let polygon = Polygon::new([
+            (0., 0.).try_into().unwrap(),
+            (0., 1.).try_into().unwrap(),
+            (1., 1.).try_into().unwrap(),
+            (1., 0.).try_into().unwrap(),
+        ])
+        .unwrap();
+
+        let a = polygon.rotated(Rotation::Q0).unwrap_err();
+        let b = polygon.rotated(Rotation::Q1).unwrap();
+        let c = polygon.rotated(Rotation::Q2).unwrap_err();
+        let d = polygon.rotated(Rotation::Q3).unwrap();
+
+        assert!(a.y_symmetric);
+        assert!(b.y_symmetric);
+        assert!(c.y_symmetric);
+        assert!(d.y_symmetric);
+
+        assert_eq!(&polygon, a);
+        assert_eq!(&polygon, &b);
+        assert_eq!(&polygon, c);
+        assert_eq!(&polygon, &d);
     }
 }

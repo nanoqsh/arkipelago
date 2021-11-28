@@ -51,4 +51,8 @@ impl TpCamera {
     pub fn move_to(&mut self, delta: f32) {
         self.distance = Self::MIN_DISTANCE.max(self.distance + delta);
     }
+
+    pub fn move_look(&mut self, delta: Vec3) {
+        self.cam.set_look(self.cam.look() + delta);
+    }
 }
