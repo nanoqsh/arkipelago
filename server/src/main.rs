@@ -1,3 +1,80 @@
-fn main() {
-    println!("Hello, world!");
+mod config;
+
+use self::config::Config;
+use core::net::Login;
+use std::io;
+use tokio::{
+    io::{AsyncReadExt, BufReader},
+    net::{TcpListener, TcpStream},
+};
+
+#[derive(Debug)]
+enum Error {
+    Len,
+    LimitReached,
+    IO(io::Error),
+    Bincode(bincode::Error),
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Self {
+        if err.kind() == io::ErrorKind::UnexpectedEof {
+            Self::Len
+        } else {
+            Self::IO(err)
+        }
+    }
+}
+
+impl From<bincode::Error> for Error {
+    fn from(err: bincode::Error) -> Self {
+        Self::Bincode(err)
+    }
+}
+
+async fn process(stream: &mut TcpStream) -> Result<Login, Error> {
+    const MAX_LEN: u32 = 2048;
+
+    let mut reader = BufReader::with_capacity(1024, stream);
+    let len = reader.read_u32().await?;
+    if len > MAX_LEN {
+        return Err(Error::LimitReached);
+    }
+
+    let mut bytes = vec![0; len as usize];
+    reader.read_exact(&mut bytes).await?;
+    Ok(bincode::deserialize(&bytes)?)
+}
+
+#[tokio::main]
+async fn main() {
+    let config = Config::load();
+    let listener = TcpListener::bind(config.socket_addr())
+        .await
+        .expect("bind tcp listener");
+
+    let addr = listener.local_addr().unwrap();
+    println!("The server is listening on {}", addr);
+
+    loop {
+        let mut stream = match listener.accept().await {
+            Ok((stream, addr)) => {
+                println!("Connection accepted: {}", addr);
+                stream
+            }
+            Err(err) => {
+                println!("Connection failed: {}", err);
+                continue;
+            }
+        };
+
+        tokio::spawn(async move {
+            let login = match process(&mut stream).await {
+                Ok(login) => login,
+                Err(err) => panic!("Login failed: {:?}", err),
+            };
+
+            println!("Try to login: {} {}", login.name, login.pass);
+        });
+    }
 }

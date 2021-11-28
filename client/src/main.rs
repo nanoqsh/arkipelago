@@ -1,8 +1,11 @@
+mod config;
 mod window;
 
-use self::window::Window;
+use self::{config::Config, window::Window};
+use core::net::Login;
 use eng::{Control, Game, Render};
 use glutin::event::{ElementState, MouseButton, VirtualKeyCode};
+use std::{io::Write, net::TcpStream, time::Duration};
 
 pub struct App {
     game: Game,
@@ -47,7 +50,24 @@ impl App {
     }
 }
 
+fn login(login: Login) {
+    let config = Config::load();
+    let addr = config.socket_addr();
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(30)).unwrap();
+    let mut bytes = Vec::new();
+    bincode::serialize_into(&mut bytes, &login).unwrap();
+    stream
+        .write_all(&(bytes.len() as u32).to_be_bytes()[..])
+        .unwrap();
+    stream.write_all(&bytes).unwrap();
+}
+
 fn main() {
+    login(Login {
+        name: "nano".into(),
+        pass: "123".into(),
+    });
+
     let (window, render) = Window::new("hui 0.0.1");
     let app = App {
         game: Game::new(&render),

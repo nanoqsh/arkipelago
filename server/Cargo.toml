@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+core = { path = "../core" }
+tokio = { version = "1.14", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.5"
+bincode = "1.3"
