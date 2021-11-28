@@ -1,4 +1,4 @@
-mod cube;
+mod base;
 mod empty;
 
-pub use self::{cube::Cube, empty::Empty};
+pub use self::{base::Base, empty::Empty};

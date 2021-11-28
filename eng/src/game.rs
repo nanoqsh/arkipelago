@@ -56,9 +56,9 @@ pub struct Game {
 impl Game {
     pub fn new(ren: &Render) -> Self {
         let tiles = [
-            ("tile0", Box::new(tiles::Cube::new(vec!["cube"]))),
-            ("tile1", Box::new(tiles::Cube::new(vec!["cube"]))),
-            ("tile2", Box::new(tiles::Cube::new(vec!["cube"]))),
+            ("cube", Box::new(tiles::Base::new(2, vec!["cube"]))),
+            ("bevel", Box::new(tiles::Base::new(1, vec!["bevel"]))),
+            ("steps", Box::new(tiles::Base::new(2, vec!["steps"]))),
         ];
 
         let mut names_tiles = HashMap::new();
@@ -119,29 +119,21 @@ impl Game {
         }
 
         let mut view = ClusterView::new(tile_set, variant_set, polygons);
-        let skip = [
-            (0, 0, 0),
-            (2, 2, 2),
-            (2, 2, 4),
-            (4, 2, 4),
-            (4, 4, 4),
-            (4, 6, 4),
-            (4, 8, 4),
-        ];
-
-        for x in 0..16 {
-            for z in 0..16 {
-                for y in (0..32).step_by(2) {
-                    if skip.contains(&(x, y, z)) || y == 12 || z % 3 == 0 {
-                        continue;
-                    }
-
-                    view.place(
-                        GlobalPoint::from_absolute(x, y, z).unwrap(),
-                        names_tiles["tile0"],
-                    );
-                }
-            }
+        for (name, (x, y, z)) in [
+            ("cube", (1, 0, 0)),
+            ("cube", (1, 0, 1)),
+            ("cube", (1, 0, 2)),
+            ("steps", (0, 0, 0)),
+            ("steps", (2, 0, 0)),
+            ("steps", (0, 0, 1)),
+            ("steps", (2, 0, 1)),
+            ("bevel", (0, 0, 2)),
+            ("bevel", (2, 0, 2)),
+        ] {
+            view.place(
+                GlobalPoint::from_absolute(x, y, z).unwrap(),
+                names_tiles[name],
+            );
         }
 
         Self {

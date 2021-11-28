@@ -43,8 +43,8 @@ impl Variant {
         Ok(Self {
             meshes: meshes
                 .into_iter()
-                .map(|(mesh, cs)| {
-                    conn.extend(cs);
+                .map(|(mesh, connections)| {
+                    conn.extend(connections);
 
                     let n_slots = mesh.sprites_st.len() as u32;
                     if let Some(face) = mesh.shape.slotted().find(|face| face.slot >= n_slots) {

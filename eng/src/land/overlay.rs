@@ -24,10 +24,11 @@ impl Overlay {
     where
         P: Fn(u16, u16) -> bool,
     {
-        match self {
-            Self::NONE => false,
-            Self::FULL => true,
-            _ => p(self.0, rhs.0),
+        match (self, rhs) {
+            (Self::NONE, _) => false,
+            (Self::FULL, _) | (_, Self::NONE) => true,
+            (_, Self::FULL) => false,
+            (a, b) => p(a.0, b.0),
         }
     }
 }

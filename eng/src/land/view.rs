@@ -56,9 +56,10 @@ impl ClusterView {
                 offset + local_offset,
                 |level, shape_height| {
                     let mut sides = Sides::empty();
+                    let ch = ch.to(Side::Up, level).unwrap();
 
                     if level + shape_height == variant_height {
-                        match ch.to(Side::Up, level + shape_height) {
+                        match ch.to(Side::Up, shape_height) {
                             Ok(hi) => {
                                 let other = vicinity.center().get(hi);
                                 if !other.overlaps(
@@ -132,12 +133,13 @@ impl ClusterView {
                             ),
                         };
 
-                        for conn in connections.iter().take(shape_height as usize) {
+                        for conn in &connections[level as usize..(level + shape_height) as usize] {
                             if !other
                                 .get(curr)
                                 .overlaps(conn, side.opposite(), &self.polygons)
                             {
                                 sides |= side;
+                                break;
                             }
 
                             curr = match curr.to(Side::Up, 1) {
@@ -147,7 +149,7 @@ impl ClusterView {
                                         Some(other) => other,
                                         None => {
                                             sides |= side;
-                                            continue;
+                                            break;
                                         }
                                     };
                                     next

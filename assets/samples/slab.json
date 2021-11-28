@@ -1,0 +1,19 @@
+{
+    "mesh": {
+        "name": "slab",
+        "height": 1,
+        "contact": {
+            "left": "l",
+            "right": "r",
+            "up": "u",
+            "down": "d",
+            "forth": "f",
+            "back": "b"
+        }
+    },
+    "overlay": [
+        {
+            ".": "full"
+        }
+    ]
+}

@@ -19,6 +19,7 @@ pub(crate) struct Parameters<'a> {
 
 #[derive(Eq, Hash, PartialEq)]
 struct Key {
+    mesh: *const Mesh,
     rotation: Rotation,
     discard: BTreeSet<u32>,
 }
@@ -47,6 +48,7 @@ impl Factory {
         } = params;
 
         let key = Key {
+            mesh: mesh as *const _,
             rotation,
             discard: mesh
                 .slots()
@@ -65,7 +67,7 @@ impl Factory {
                         if discard.contains(slot) {
                             None
                         } else {
-                            contact.get(slot).copied()
+                            Some(contact.get(slot).copied().unwrap_or_default())
                         }
                     },
                     |st| {

@@ -1,6 +1,7 @@
 mod format;
 mod load;
 mod reader;
+#[allow(dead_code)]
 mod this;
 
 mod re {

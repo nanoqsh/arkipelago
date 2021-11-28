@@ -1,0 +1,12 @@
+{
+    "samples": [
+        "slab",
+        {
+            "name": "step",
+            "discard": [
+                "down"
+            ]
+        }
+    ],
+    "sprite": "default"
+}
