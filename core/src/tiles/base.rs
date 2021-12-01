@@ -20,9 +20,7 @@ impl Tile for Base {
         &self.variants
     }
 
-    fn place(&self, _: &mut Cluster, point: GlobalPoint) -> Placement {
-        println!("[ DEBUG ] Place a tile at {}", point);
-
+    fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
         Placement {
             variant: VariantIndex(0),
             data: &[

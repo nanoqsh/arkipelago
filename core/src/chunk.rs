@@ -72,10 +72,7 @@ impl<T> Chunk<T> {
     }
 }
 
-impl<T> Default for Chunk<T>
-where
-    T: Copy + Default,
-{
+impl<T: Copy + Default> Default for Chunk<T> {
     fn default() -> Self {
         Self::filled(T::default())
     }

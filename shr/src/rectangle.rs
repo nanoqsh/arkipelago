@@ -35,10 +35,7 @@ impl<T> Rectangle<T> {
     }
 }
 
-impl<T> Rectangle<T>
-where
-    T: Copy,
-{
+impl<T: Copy> Rectangle<T> {
     pub fn cast<U>(self) -> Option<Rectangle<U>>
     where
         T: NumCast,
@@ -60,10 +57,7 @@ where
     }
 }
 
-impl<T> Rectangle<T>
-where
-    T: BaseNum,
-{
+impl<T: BaseNum> Rectangle<T> {
     pub fn size(self) -> Vector2<T> {
         self.b - self.a
     }
@@ -77,11 +71,7 @@ where
     }
 }
 
-impl<T, A, B> From<(A, B)> for Rectangle<T>
-where
-    Vector2<T>: From<A>,
-    Vector2<T>: From<B>,
-{
+impl<T, A: Into<Vector2<T>>, B: Into<Vector2<T>>> From<(A, B)> for Rectangle<T> {
     fn from((a, b): (A, B)) -> Self {
         Self::new(a, b)
     }

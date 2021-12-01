@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use shr::cgm::*;
-use std::{error, fmt, str::FromStr};
+use std::{error, fmt, ops, str::FromStr};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ParseError {
@@ -160,10 +160,7 @@ impl fmt::Display for Side {
     }
 }
 
-impl<S> std::ops::BitOr<S> for Side
-where
-    S: Into<Sides>,
-{
+impl<S: Into<Sides>> ops::BitOr<S> for Side {
     type Output = Sides;
 
     fn bitor(self, rhs: S) -> Self::Output {
@@ -246,7 +243,7 @@ impl fmt::Debug for Sides {
     }
 }
 
-impl std::ops::Not for Sides {
+impl ops::Not for Sides {
     type Output = Self;
 
     fn not(mut self) -> Self::Output {
@@ -255,20 +252,14 @@ impl std::ops::Not for Sides {
     }
 }
 
-impl<S> std::ops::BitOrAssign<S> for Sides
-where
-    S: Into<Self>,
-{
+impl<S: Into<Self>> ops::BitOrAssign<S> for Sides {
     fn bitor_assign(&mut self, rhs: S) {
         let rhs = rhs.into();
         self.0 |= rhs.0
     }
 }
 
-impl<S> std::ops::BitOr<S> for Sides
-where
-    S: Into<Self>,
-{
+impl<S: Into<Self>> ops::BitOr<S> for Sides {
     type Output = Self;
 
     fn bitor(mut self, rhs: S) -> Self::Output {
@@ -277,13 +268,13 @@ where
     }
 }
 
-impl std::ops::BitAndAssign for Sides {
+impl ops::BitAndAssign for Sides {
     fn bitand_assign(&mut self, rhs: Self) {
         self.0 &= rhs.0;
     }
 }
 
-impl std::ops::BitAnd for Sides {
+impl ops::BitAnd for Sides {
     type Output = Self;
 
     fn bitand(mut self, rhs: Self) -> Self::Output {

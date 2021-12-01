@@ -58,7 +58,10 @@ impl Factory {
         };
 
         match self.shapes.entry(key) {
-            Entry::Occupied(en) => Rc::clone(en.get()),
+            Entry::Occupied(en) => {
+                println!("[ DEBUG ] Cached shape");
+                Rc::clone(en.get())
+            }
             Entry::Vacant(en) => {
                 let shape = Shape::new(
                     mesh,

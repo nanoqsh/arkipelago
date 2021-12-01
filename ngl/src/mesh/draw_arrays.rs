@@ -23,10 +23,7 @@ impl<M> ClearContext for DrawArrays<M> {
     fn clear(&mut self, _: &Context) {}
 }
 
-impl<M> Draw for DrawArrays<M>
-where
-    M: Mode,
-{
+impl<M: Mode> Draw for DrawArrays<M> {
     fn draw(&self, ctx: &Context) {
         unsafe { ctx.draw_arrays(M::MODE, 0, self.len as _) }
     }

@@ -17,10 +17,7 @@ impl UniformInfo {
     }
 }
 
-pub(crate) struct Location<T>
-where
-    T: ?Sized,
-{
+pub(crate) struct Location<T: ?Sized> {
     nat: NativeUniformLocation,
     checker: ProgramChecker,
     typ: PhantomData<T>,
@@ -34,10 +31,7 @@ impl<T> Clone for Location<T> {
 
 impl<T> Copy for Location<T> {}
 
-impl<T> Location<T>
-where
-    T: ?Sized,
-{
+impl<T: ?Sized> Location<T> {
     fn new(nat: NativeUniformLocation, program: NativeProgram) -> Self {
         Self {
             nat,

@@ -1,13 +1,12 @@
 use crate::{line::Line, mesh::Indexed, shaders::*, texture::Texture, vertex::Vertex};
 use shr::cgm::*;
+use std::ops;
 
 pub trait Stage<'a> {
     type Inner;
 }
 
-pub struct Pass<'a, S>(pub(crate) S::Inner)
-where
-    S: Stage<'a>;
+pub struct Pass<'a, S: Stage<'a>>(pub(crate) S::Inner);
 
 impl Pass<'_, Solid> {
     pub fn draw_indexed_mesh(&self, mesh: &Indexed<Vertex>) {
@@ -50,10 +49,7 @@ impl Pass<'_, Interface> {
     }
 }
 
-impl<'a, S> std::ops::Deref for Pass<'a, S>
-where
-    S: Stage<'a>,
-{
+impl<'a, S: Stage<'a>> ops::Deref for Pass<'a, S> {
     type Target = S::Inner;
 
     fn deref(&self) -> &Self::Target {
@@ -145,6 +141,6 @@ pub struct Interface;
 #[derive(Copy, Clone)]
 pub struct InterfaceInner(pub(crate) ());
 
-impl<'a> Stage<'a> for Interface {
+impl Stage<'_> for Interface {
     type Inner = InterfaceInner;
 }

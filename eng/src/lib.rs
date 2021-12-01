@@ -14,7 +14,7 @@ pub use self::{
 
 type Vert = ngl::vertex::Vertex;
 type Texture = ngl::texture::Texture;
-type Mesh = self::mesh::Mesh<Vert, str>;
+type Mesh = self::mesh::Mesh<Vert>;
 type IndexedMesh = ngl::mesh::Indexed<Vert>;
 
 pub use ngl::GL_VERSION;

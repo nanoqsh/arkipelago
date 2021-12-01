@@ -2,7 +2,7 @@ use glow::{Context, HasContext, NativeUniformLocation};
 use shr::cgm::*;
 
 pub(crate) trait Uniform {
-    /// Sets uniform value
+    /// Sets uniform value.
     fn uniform(&self, ctx: &Context, loc: NativeUniformLocation);
 
     /// Sets uniform slice.
@@ -52,19 +52,13 @@ impl Uniform for bool {
     }
 }
 
-impl<T, const N: usize> Uniform for [T; N]
-where
-    T: Uniform,
-{
+impl<T: Uniform, const N: usize> Uniform for [T; N] {
     fn uniform(&self, ctx: &Context, loc: NativeUniformLocation) {
         T::uniform_slice(self, ctx, loc)
     }
 }
 
-impl<T> Uniform for [T]
-where
-    T: Uniform,
-{
+impl<T: Uniform> Uniform for [T] {
     fn uniform(&self, ctx: &Context, loc: NativeUniformLocation) {
         T::uniform_slice(self, ctx, loc)
     }

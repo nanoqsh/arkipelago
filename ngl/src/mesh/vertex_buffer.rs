@@ -14,11 +14,7 @@ pub(crate) struct VertexBuffer<L, U> {
     usage: PhantomData<U>,
 }
 
-impl<L, U> VertexBuffer<L, U>
-where
-    L: Layout,
-    U: Usage,
-{
+impl<L: Layout, U: Usage> VertexBuffer<L, U> {
     pub fn empty(ctx: &Context, len: usize) -> Self {
         unsafe { Self::new(ctx, std::ptr::null(), len) }
     }

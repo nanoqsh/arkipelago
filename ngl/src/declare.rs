@@ -52,10 +52,7 @@ impl Declare for bool {
     }
 }
 
-impl<T, const N: usize> Declare for [T; N]
-where
-    T: Declare,
-{
+impl<T: Declare, const N: usize> Declare for [T; N] {
     fn declare_type(out: &mut String) {
         T::declare_type(out);
         write!(out, "[{}]", N).unwrap()

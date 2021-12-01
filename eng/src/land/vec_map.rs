@@ -2,10 +2,7 @@ pub(crate) struct Map<T> {
     map: Vec<Option<T>>,
 }
 
-impl<T> Map<T>
-where
-    T: Copy,
-{
+impl<T: Copy> Map<T> {
     pub fn with_capacity(cap: usize) -> Self {
         Self {
             map: vec![None; cap],

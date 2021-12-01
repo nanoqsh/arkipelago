@@ -71,7 +71,7 @@ pub struct ClusterSlice<'a> {
     chunks: (&'a SlabChunk, Option<&'a SlabChunk>),
 }
 
-impl<'a> ClusterSlice<'a> {
+impl ClusterSlice<'_> {
     pub const fn len(&self) -> usize {
         self.lo.len() + self.hi.len()
     }

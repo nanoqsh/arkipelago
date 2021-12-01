@@ -125,7 +125,7 @@ impl ToVariant {
                                 .collect(),
                         })
                         .unwrap_or_else(|| {
-                            let vec = st(None);
+                            let vec = st(self.sprite.as_deref());
                             vec![vec; mesh.slots().len()].into_boxed_slice()
                         }),
                     height: *height,

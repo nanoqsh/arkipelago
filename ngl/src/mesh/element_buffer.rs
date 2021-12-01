@@ -40,10 +40,7 @@ impl<M> ClearContext for ElementBuffer<M> {
     }
 }
 
-impl<M> Draw for ElementBuffer<M>
-where
-    M: Mode,
-{
+impl<M: Mode> Draw for ElementBuffer<M> {
     fn draw(&self, ctx: &Context) {
         unsafe { ctx.draw_elements(M::MODE, self.len as _, glow::UNSIGNED_INT, 0) }
     }

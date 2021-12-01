@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error, fmt};
+use std::{error, fmt};
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,116 +19,73 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
-pub trait Key {
-    type Keys;
-}
+pub struct Slots(Vec<(String, Box<[u32]>)>);
 
-impl Key for u32 {
-    type Keys = ();
-}
-
-impl Key for str {
-    type Keys = HashMap<String, u32>;
-}
-
-pub struct Slots<K>
-where
-    K: Key + ?Sized,
-{
-    keys: K::Keys,
-    slots: Vec<Box<[u32]>>,
-}
-
-impl<K> Slots<K>
-where
-    K: Key + ?Sized,
-{
-    pub fn face_indices(&self) -> impl Iterator<Item = u32> + '_ {
-        self.slots.iter().map(|slot| slot.iter().copied()).flatten()
-    }
-
-    pub fn faces_max_len(&self) -> usize {
-        self.slots.iter().map(|slot| slot.len()).sum()
-    }
-}
-
-impl Slots<str> {
+impl Slots {
     pub fn new<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = (String, Box<[u32]>)>,
     {
-        let (keys, slots) = iter
-            .into_iter()
-            .enumerate()
-            .map(|(idx, (key, slot))| ((key, idx as u32), slot))
-            .unzip();
+        Self(iter.into_iter().collect())
+    }
 
-        Self { keys, slots }
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
     pub fn index(&self, key: &str) -> Option<u32> {
-        self.keys.get(key).copied()
+        self.0
+            .iter()
+            .enumerate()
+            .find(|(_, (k, _))| k == key)
+            .map(|(i, _)| i as u32)
     }
 
     pub fn values(&self) -> impl Iterator<Item = (&str, u32)> + '_ {
-        self.keys.iter().map(|(k, v)| (k.as_str(), *v))
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(i, (k, _))| (k.as_str(), i as u32))
     }
 
     pub fn ordered_keys(&self) -> impl Iterator<Item = &str> {
-        self.slots.iter().enumerate().map(|(target, _)| {
-            self.keys
-                .iter()
-                .find(|(_, &idx)| idx == target as u32)
-                .unwrap()
-                .0
-                .as_str()
-        })
+        self.0.iter().map(|(k, _)| k.as_str())
     }
 
     pub fn for_face(&self, face: u32) -> Option<(&str, u32)> {
-        self.values()
-            .find(|(_, slot_idx)| self[*slot_idx as usize].contains(&face))
+        self.0
+            .iter()
+            .enumerate()
+            .find(|(_, (_, slot))| slot.contains(&face))
+            .map(|(i, (k, _))| (k.as_str(), i as u32))
+    }
+
+    pub fn face_indices(&self) -> impl Iterator<Item = u32> + '_ {
+        self.0
+            .iter()
+            .map(|(_, slot)| slot.iter().copied())
+            .flatten()
+    }
+
+    pub fn faces_max_len(&self) -> usize {
+        self.0.iter().map(|(_, slot)| slot.len()).sum()
     }
 }
 
-impl<K> Default for Slots<K>
-where
-    K: Key + ?Sized,
-    K::Keys: Default,
-{
+impl Default for Slots {
     fn default() -> Self {
-        Self {
-            keys: Default::default(),
-            slots: Vec::default(),
-        }
+        Self(Vec::default())
     }
 }
 
-impl<K> std::ops::Deref for Slots<K>
-where
-    K: Key + ?Sized,
-{
-    type Target = [Box<[u32]>];
-
-    fn deref(&self) -> &Self::Target {
-        &self.slots
-    }
-}
-
-pub struct Mesh<V, K>
-where
-    K: Key + ?Sized,
-{
+pub struct Mesh<V> {
     verts: Vec<V>,
     indxs: Vec<u32>,
-    slots: Slots<K>,
+    slots: Slots,
 }
 
-impl<V, K> Mesh<V, K>
-where
-    K: Key + ?Sized,
-{
-    pub fn new(verts: Vec<V>, indxs: Vec<u32>, slots: Slots<K>) -> Result<Self, Error> {
+impl<V> Mesh<V> {
+    pub fn new(verts: Vec<V>, indxs: Vec<u32>, slots: Slots) -> Result<Self, Error> {
         // Vertices len must be a multiple of 3
         if indxs.len() % 3 != 0 {
             return Err(Error::IndxsLen(indxs.len()));
@@ -151,7 +108,7 @@ where
         Ok(Self::new_unchecked(verts, indxs, slots))
     }
 
-    pub fn new_unchecked(verts: Vec<V>, indxs: Vec<u32>, slots: Slots<K>) -> Self {
+    pub fn new_unchecked(verts: Vec<V>, indxs: Vec<u32>, slots: Slots) -> Self {
         Self {
             verts,
             indxs,
@@ -167,20 +124,7 @@ where
         &self.indxs
     }
 
-    pub fn slots(&self) -> &Slots<K> {
+    pub fn slots(&self) -> &Slots {
         &self.slots
-    }
-}
-
-impl<V> From<Mesh<V, str>> for Mesh<V, u32> {
-    fn from(mesh: Mesh<V, str>) -> Self {
-        Self {
-            verts: mesh.verts,
-            indxs: mesh.indxs,
-            slots: Slots {
-                keys: (),
-                slots: mesh.slots.slots,
-            },
-        }
     }
 }
