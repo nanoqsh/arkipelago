@@ -16,6 +16,21 @@ use glow::{Context, HasContext};
 use shr::{cgm::*, shapes::*};
 use std::rc::Rc;
 
+#[derive(Copy, Clone)]
+pub struct Fog {
+    pub cl: Vec3,
+    pub near: f32,
+    pub far: f32,
+}
+
+pub struct Parameters<'a> {
+    pub cl: Vec3,
+    pub vignette_cl: Vec3,
+    pub fog: Option<Fog>,
+    pub view: Option<&'a Mat4>,
+    pub proj: Option<&'a Mat4>,
+}
+
 pub struct Render {
     shaders: Shaders,
     frame: Frame,
@@ -23,6 +38,8 @@ pub struct Render {
     line: Line,
     quad: Quad,
     deb: Debugger,
+    size: UVec2,
+    pixel_size: u32,
     ctx: Rc<Context>,
 }
 
@@ -48,21 +65,26 @@ impl Render {
                 debug_gl!(deb);
                 deb
             },
+            size: UVec2::zero(),
+            pixel_size: 1,
             ctx,
         }
     }
 
-    pub fn resize(&mut self, size: UVec2) {
+    pub fn resize(&mut self, size: UVec2, pixel_size: u32) {
         const MIN_SIZE: u32 = 2;
         const MAX_SIZE: u32 = i32::MAX as u32;
 
-        let (width, height) = match size.into() {
-            (width @ MIN_SIZE..=MAX_SIZE, height @ MIN_SIZE..=MAX_SIZE) => (width, height),
-            _ => return,
-        };
+        if !(MIN_SIZE..=MAX_SIZE).contains(&size.x)
+            || !(MIN_SIZE..=MAX_SIZE).contains(&size.y)
+            || pixel_size == 0
+        {
+            return;
+        }
 
-        unsafe { self.ctx.viewport(0, 0, width as _, height as _) }
-        self.frame.resize(size);
+        self.frame.resize(size / pixel_size);
+        self.size = size;
+        self.pixel_size = pixel_size;
 
         debug_gl!(self.deb);
     }
@@ -83,12 +105,19 @@ impl Render {
     where
         D: IntoIterator<Item = &'a dyn Pipe>,
     {
-        let Parameters { cl, view, proj } = params;
         let pipeline = std::mem::take(&mut self.pipeline).filled(draws);
 
+        let (width, height) = self.size.into();
         self.frame.bind();
         unsafe {
-            let (r, g, b) = cl.into();
+            self.ctx.viewport(
+                0,
+                0,
+                (width / self.pixel_size) as _,
+                (height / self.pixel_size) as _,
+            );
+
+            let (r, g, b) = params.cl.into();
             self.ctx.clear_color(r, g, b, 1.);
             self.ctx.clear_depth_f32(1.);
             self.ctx
@@ -101,20 +130,26 @@ impl Render {
             self.ctx.depth_func(glow::LESS);
         }
         let inner = SolidInner::new(&self.shaders.solid);
-        if let Some(view) = view {
+        if let Some(fog) = params.fog {
+            inner.set_fog(fog)
+        }
+        if let Some(view) = params.view {
             inner.set_view(view)
         }
-        if let Some(proj) = proj {
+        if let Some(proj) = params.proj {
             inner.set_proj(proj)
         }
         pipeline.draw_solid(inner);
         debug_gl!(self.deb);
 
         let inner = SkinInner::new(&self.shaders.skin);
-        if let Some(view) = view {
+        if let Some(fog) = params.fog {
+            inner.set_fog(fog)
+        }
+        if let Some(view) = params.view {
             inner.set_view(view)
         }
-        if let Some(proj) = proj {
+        if let Some(proj) = params.proj {
             inner.set_proj(proj)
         }
         pipeline.draw_skin(inner);
@@ -122,19 +157,22 @@ impl Render {
 
         unsafe { self.ctx.disable(glow::DEPTH_TEST) }
         let inner = ColorInner::new(&self.shaders.color, &self.line);
-        if let Some(view) = view {
+        if let Some(view) = params.view {
             inner.set_view(view)
         }
-        if let Some(proj) = proj {
+        if let Some(proj) = params.proj {
             inner.set_proj(proj)
         }
         pipeline.draw_color(inner);
         debug_gl!(self.deb);
 
         self.frame.bind_default();
+        unsafe { self.ctx.viewport(0, 0, width as _, height as _) }
+
         let frame = self.frame.texture(0).unwrap();
         frame.bind(Shaders::T0);
         self.shaders.post.use_program();
+        self.shaders.post.set_vignette_cl(&params.vignette_cl);
         self.quad.draw(
             Rect::new((-1., -1.), (1., 1.)),
             Rect::new((0., 0.), (1., 1.)),
@@ -146,10 +184,4 @@ impl Render {
 
         self.pipeline = pipeline.cleared();
     }
-}
-
-pub struct Parameters<'a> {
-    pub cl: Vec3,
-    pub view: Option<&'a Mat4>,
-    pub proj: Option<&'a Mat4>,
 }

@@ -171,7 +171,7 @@ impl Game {
     pub fn draw(&mut self, ren: &mut Render, _: f32) {
         ren.set_proj(self.cam.proj(self.aspect));
         ren.set_view(self.cam.view());
-        ren.draw([&self.data as &dyn Pipe])
+        ren.draw(Vec3::new(0.3, 0.6, 0.8), [&self.data as &dyn Pipe])
     }
 
     pub fn resize(&mut self, (width, height): (u32, u32)) {

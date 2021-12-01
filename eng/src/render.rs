@@ -1,6 +1,6 @@
 use crate::{IndexedMesh, Texture, Vert};
 use image::{DynamicImage, GenericImageView};
-use ngl::{Parameters, Pipe};
+use ngl::{Fog, Parameters, Pipe};
 use shr::cgm::*;
 
 type Ren = ngl::Render;
@@ -64,8 +64,8 @@ impl Render {
         self.ren.make_indexed_mesh(verts, indxs)
     }
 
-    pub fn resize(&mut self, size: (u32, u32)) {
-        self.ren.resize(size.into())
+    pub fn resize(&mut self, size: (u32, u32), pixel_size: u32) {
+        self.ren.resize(size.into(), pixel_size)
     }
 
     pub fn set_view(&mut self, view: Mat4) {
@@ -76,14 +76,20 @@ impl Render {
         self.proj = Some(proj)
     }
 
-    pub fn draw<'a, D>(&mut self, draws: D)
+    pub fn draw<'a, D>(&mut self, cl: Vec3, draws: D)
     where
         D: IntoIterator<Item = &'a dyn Pipe>,
     {
         self.ren.draw(
             draws,
             Parameters {
-                cl: Vec3::new(0., 0., 0.),
+                cl,
+                vignette_cl: Vec3::new(0.7, 0.8, 0.9),
+                fog: Some(Fog {
+                    cl,
+                    near: 0.1,
+                    far: 0.6,
+                }),
                 view: self.view.take().as_ref(),
                 proj: self.proj.take().as_ref(),
             },

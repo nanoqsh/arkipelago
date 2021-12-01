@@ -63,6 +63,9 @@ impl Shaders {
 #[uniforms]
 pub(crate) struct SolidProgram {
     t0: Sampler2d,
+    fog_cl: Vec3,
+    fog_near: f32,
+    fog_far: f32,
     model: Mat4,
     view: Mat4,
     proj: Mat4,
@@ -71,6 +74,9 @@ pub(crate) struct SolidProgram {
 #[uniforms]
 pub(crate) struct SkinProgram {
     t0: Sampler2d,
+    fog_cl: Vec3,
+    fog_near: f32,
+    fog_far: f32,
     model: Mat4,
     view: Mat4,
     proj: Mat4,
@@ -87,4 +93,5 @@ pub(crate) struct ColorProgram {
 #[uniforms]
 pub(crate) struct PostProgram {
     t0: Sampler2d,
+    vignette_cl: Vec3,
 }

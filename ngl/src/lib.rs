@@ -22,7 +22,7 @@ pub mod texture {
 
 pub use crate::{
     draw::{Draw, Pipe, Pipeline},
-    render::{Parameters, Render},
+    render::{Fog, Parameters, Render},
 };
 
 pub const GL_VERSION: (u8, u8) = (3, 3);

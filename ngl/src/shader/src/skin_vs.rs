@@ -16,7 +16,7 @@ def_shader! {
         proj: Mat4,
         bones: [Mat4; BONES_MAX_LEN],
     },
-    fn: () -> (fs_st: Vec2),
+    fn: () -> (fs_co: Vec3, fs_st: Vec2),
     impl: {
         const uint BONES_MAX_LEN = $BONES_MAX_LEN;
 
@@ -27,7 +27,10 @@ def_shader! {
                 + bones[bs.z] * ws.z;
 
             fs_st = st;
-            gl_Position = proj * view * model * bone * vec4(co, 1.0);
+            
+            vec4 res = proj * view * model * bone * vec4(co, 1.0);
+            fs_co = vec3(res);
+            gl_Position = res;
         }
     }
 }

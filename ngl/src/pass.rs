@@ -1,4 +1,4 @@
-use crate::{line::Line, mesh::Indexed, shaders::*, texture::Texture, vertex::Vertex};
+use crate::{line::Line, mesh::Indexed, shaders::*, texture::Texture, vertex::Vertex, Fog};
 use shr::cgm::*;
 use std::ops;
 
@@ -70,6 +70,12 @@ impl<'a> SolidInner<'a> {
         Self { shader }
     }
 
+    pub(crate) fn set_fog(&self, fog: Fog) {
+        self.shader.set_fog_cl(&fog.cl);
+        self.shader.set_fog_near(&fog.near);
+        self.shader.set_fog_far(&fog.far);
+    }
+
     pub(crate) fn set_view(&self, view: &Mat4) {
         self.shader.set_view(view)
     }
@@ -94,6 +100,12 @@ impl<'a> SkinInner<'a> {
     pub(crate) fn new(shader: &'a SkinProgram) -> Self {
         shader.use_program();
         Self { shader }
+    }
+
+    pub(crate) fn set_fog(&self, fog: Fog) {
+        self.shader.set_fog_cl(&fog.cl);
+        self.shader.set_fog_near(&fog.near);
+        self.shader.set_fog_far(&fog.far);
     }
 
     pub(crate) fn set_view(&self, view: &Mat4) {

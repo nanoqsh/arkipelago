@@ -38,7 +38,11 @@ impl Declare for f32 {
     }
 
     fn literal(&self, out: &mut String) {
-        write!(out, "{}.{}", self.trunc(), self.fract()).unwrap()
+        write!(out, "{}", self,).unwrap();
+
+        if self.fract() == 0. {
+            write!(out, ".0",).unwrap();
+        }
     }
 }
 
