@@ -1,7 +1,7 @@
 use crate::loader::Error;
 use image::DynamicImage;
 use serde::Deserialize;
-use std::{marker::PhantomData, path::Path};
+use std::{io::Read, marker::PhantomData, path::Path};
 
 pub(crate) trait Format {
     const EXT: &'static str;
@@ -31,7 +31,7 @@ impl<'a, T: Deserialize<'a>> Format for Json<'a, T> {
     fn read(self, path: &Path) -> Result<Self::Raw, Error> {
         let mut file = std::fs::File::open(path)?;
         self.buf.clear();
-        std::io::Read::read_to_string(&mut file, self.buf)?;
+        file.read_to_string(self.buf)?;
         let raw = serde_json::from_str(self.buf)?;
         Ok(raw)
     }

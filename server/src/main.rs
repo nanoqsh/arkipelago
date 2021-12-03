@@ -1,7 +1,7 @@
 mod config;
 
 use self::config::Config;
-use core::net::Login;
+use core::net::{Login, Unpacked};
 use std::io;
 use tokio::{
     io::{AsyncReadExt, BufReader},
@@ -10,40 +10,28 @@ use tokio::{
 
 #[derive(Debug)]
 enum Error {
-    Len,
-    LimitReached,
     IO(io::Error),
-    Bincode(bincode::Error),
+    Pack(core::net::Error),
 }
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
-        if err.kind() == io::ErrorKind::UnexpectedEof {
-            Self::Len
-        } else {
-            Self::IO(err)
-        }
+        Self::IO(err)
     }
 }
 
-impl From<bincode::Error> for Error {
-    fn from(err: bincode::Error) -> Self {
-        Self::Bincode(err)
+impl From<core::net::Error> for Error {
+    fn from(err: core::net::Error) -> Self {
+        Self::Pack(err)
     }
 }
 
 async fn process(stream: &mut TcpStream) -> Result<Login, Error> {
-    const MAX_LEN: u32 = 2048;
-
     let mut reader = BufReader::with_capacity(1024, stream);
     let len = reader.read_u32().await?;
-    if len > MAX_LEN {
-        return Err(Error::LimitReached);
-    }
-
-    let mut bytes = vec![0; len as usize];
-    reader.read_exact(&mut bytes).await?;
-    Ok(bincode::deserialize(&bytes)?)
+    let mut unpacked = Unpacked::new(len)?;
+    reader.read_exact(unpacked.bytes()).await?;
+    Ok(unpacked.to()?)
 }
 
 #[tokio::main]

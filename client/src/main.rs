@@ -2,7 +2,7 @@ mod config;
 mod window;
 
 use self::{config::Config, window::Window};
-use core::net::Login;
+use core::net::{Login, Packed};
 use eng::{Control, Game, Render};
 use glutin::event::{ElementState, MouseButton, VirtualKeyCode};
 use std::{io::Write, net::TcpStream, time::Duration};
@@ -53,13 +53,10 @@ impl App {
 fn login(login: Login) {
     let config = Config::load();
     let addr = config.socket_addr();
+    println!("Wait for connection ..");
     let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(30)).unwrap();
-    let mut bytes = Vec::new();
-    bincode::serialize_into(&mut bytes, &login).unwrap();
-    stream
-        .write_all(&(bytes.len() as u32).to_be_bytes()[..])
-        .unwrap();
-    stream.write_all(&bytes).unwrap();
+    let packed = Packed::new(&login).unwrap();
+    stream.write_all(packed.bytes()).unwrap();
 }
 
 fn main() {

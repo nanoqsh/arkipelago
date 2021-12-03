@@ -19,6 +19,7 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
+#[derive(Default)]
 pub struct Slots(Vec<(String, Box<[u32]>)>);
 
 impl Slots {
@@ -69,12 +70,6 @@ impl Slots {
 
     pub fn faces_max_len(&self) -> usize {
         self.0.iter().map(|(_, slot)| slot.len()).sum()
-    }
-}
-
-impl Default for Slots {
-    fn default() -> Self {
-        Self(Vec::default())
     }
 }
 
