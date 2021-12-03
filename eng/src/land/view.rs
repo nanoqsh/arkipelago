@@ -15,9 +15,9 @@ pub(crate) struct ClusterView {
 }
 
 impl ClusterView {
-    pub fn new(tile_set: TileSet, variant_set: VariantSet, polygons: Polygons) -> Self {
+    pub fn new(tile_set: Rc<TileSet>, variant_set: VariantSet, polygons: Polygons) -> Self {
         Self {
-            cluster: Cluster::new(Rc::new(tile_set)),
+            cluster: Cluster::new(tile_set),
             local: Map::default(),
             variant_set,
             polygons,

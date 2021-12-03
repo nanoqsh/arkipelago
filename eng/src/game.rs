@@ -5,7 +5,7 @@ use crate::{
     loader::Loader,
     Render, Texture, Vert,
 };
-use core::{prelude::*, tiles};
+use core::prelude::*;
 use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
@@ -55,22 +55,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(ren: &Render) -> Self {
-        let tiles = [
-            ("cube", Box::new(tiles::Base::new(2, vec!["cube"]))),
-            ("slab", Box::new(tiles::Base::new(1, vec!["slab"]))),
-            ("half", Box::new(tiles::Base::new(1, vec!["half"]))),
-            ("bevel_0", Box::new(tiles::Base::new(1, vec!["bevel"]))),
-            ("bevel_1", Box::new(tiles::Base::new(1, vec!["bevel_q1"]))),
-            ("bevel_2", Box::new(tiles::Base::new(1, vec!["bevel_q2"]))),
-            ("bevel_3", Box::new(tiles::Base::new(1, vec!["bevel_q3"]))),
-            ("steps_0", Box::new(tiles::Base::new(2, vec!["steps"]))),
-            ("steps_1", Box::new(tiles::Base::new(2, vec!["steps_q1"]))),
-            ("steps_2", Box::new(tiles::Base::new(2, vec!["steps_q2"]))),
-            ("steps_3", Box::new(tiles::Base::new(2, vec!["steps_q3"]))),
-        ];
-
-        let mut names_tiles = HashMap::new();
-        let mut tile_set = TileSet::new();
+        let tile_set = TileSet::new();
         let mut to_variants = Vec::new();
 
         let mut sprite_names = HashMap::new();
@@ -91,12 +76,10 @@ impl Game {
             });
             loader.load_sprite("tiles/default").unwrap();
 
-            for (tile_name, tile) in tiles {
-                let index = tile_set.add(tile);
-                names_tiles.insert(tile_name, index);
-                for (i, variant_name) in tile_set.get(index).variants().iter().enumerate() {
+            for (idx, tile) in tile_set.tiles() {
+                for (i, variant_name) in tile.variants().iter().enumerate() {
                     let to_variant = loader.load_variant(variant_name).unwrap();
-                    to_variants.push(((index, VariantIndex(i as u8)), to_variant));
+                    to_variants.push(((idx, VariantIndex(i as u8)), to_variant));
                 }
             }
 
@@ -126,7 +109,8 @@ impl Game {
             variant_set.add(key, variant);
         }
 
-        let mut view = ClusterView::new(tile_set, variant_set, polygons);
+        let tile_set = Rc::new(tile_set);
+        let mut view = ClusterView::new(Rc::clone(&tile_set), variant_set, polygons);
         for (name, (x, y, z)) in [
             ("cube", (2, 0, 0)),
             ("cube", (2, 0, 1)),
@@ -154,7 +138,7 @@ impl Game {
         ] {
             view.place(
                 GlobalPoint::from_absolute(x, y, z).unwrap(),
-                names_tiles[name],
+                tile_set.get_index(name).unwrap(),
             );
         }
 

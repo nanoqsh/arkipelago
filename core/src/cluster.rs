@@ -180,7 +180,7 @@ impl Cluster {
 
     pub fn place(&mut self, gl: GlobalPoint, tile: TileIndex) -> Option<Placed> {
         let tiles = Rc::clone(&self.tile_set);
-        let tile_obj = tiles.get(tile);
+        let tile_obj = tiles.get(tile).unwrap();
         let height = tile_obj.height();
         let (lo, hi) = self.map.slice_mut(gl, height);
         if !lo.iter().chain(hi.iter()).copied().all(Slab::is_empty) {
@@ -285,13 +285,16 @@ mod tests {
 
     fn cluster() -> (Cluster, TileIndex) {
         let mut tile_set = TileSet::new();
-        let index = tile_set.add(Box::new(TestTile {
-            data: Box::leak(Box::new([
-                Data::None,
-                Data::Num(Num::new(2).unwrap()),
-                Data::Obj(Rc::new(2)),
-            ])),
-        }));
+        let index = tile_set.add(
+            "test",
+            Box::new(TestTile {
+                data: Box::leak(Box::new([
+                    Data::None,
+                    Data::Num(Num::new(2).unwrap()),
+                    Data::Obj(Rc::new(2)),
+                ])),
+            }),
+        );
         (Cluster::new(Rc::new(tile_set)), index)
     }
 

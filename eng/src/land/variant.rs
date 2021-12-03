@@ -93,23 +93,19 @@ impl Variant {
     }
 }
 
-pub(crate) struct VariantSet {
-    variants: HashMap<(TileIndex, VariantIndex), Variant>,
-}
+pub(crate) struct VariantSet(HashMap<(TileIndex, VariantIndex), Variant>);
 
 impl VariantSet {
-    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self {
-            variants: HashMap::default(),
-        }
+        Self(HashMap::default())
     }
 
     pub fn get(&self, key: (TileIndex, VariantIndex)) -> &Variant {
-        self.variants.get(&key).unwrap()
+        self.0.get(&key).unwrap()
     }
 
     pub fn add(&mut self, key: (TileIndex, VariantIndex), variant: Variant) {
-        self.variants.entry(key).or_insert(variant);
+        let old = self.0.insert(key, variant);
+        assert!(old.is_none());
     }
 }
