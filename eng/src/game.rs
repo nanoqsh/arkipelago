@@ -55,7 +55,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(ren: &Render) -> Self {
-        let tile_set = TileSet::new();
+        let tiles = TileList::new();
         let mut to_variants = Vec::new();
 
         let mut sprite_names = HashMap::new();
@@ -66,7 +66,7 @@ impl Game {
             loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
                 let (_, name) = name.split_once('/').unwrap();
                 if sprites.is_empty() {
-                    debug_assert_eq!(name, "default")
+                    assert_eq!(name, "default")
                 }
 
                 assert!(sprite_names
@@ -76,10 +76,10 @@ impl Game {
             });
             loader.load_sprite("tiles/default").unwrap();
 
-            for (idx, tile) in tile_set.tiles() {
-                for (i, variant_name) in tile.variants().iter().enumerate() {
-                    let to_variant = loader.load_variant(variant_name).unwrap();
-                    to_variants.push(((idx, VariantIndex(i as u8)), to_variant));
+            for info in tiles.iter() {
+                for (name, variant) in info.variants() {
+                    let to_variant = loader.load_variant(name).unwrap();
+                    to_variants.push(((info.index(), *variant), to_variant));
                 }
             }
 
@@ -109,8 +109,7 @@ impl Game {
             variant_set.add(key, variant);
         }
 
-        let tile_set = Rc::new(tile_set);
-        let mut view = ClusterView::new(Rc::clone(&tile_set), variant_set, polygons);
+        let mut view = ClusterView::new(variant_set, polygons);
         for (name, (x, y, z)) in [
             ("cube", (2, 0, 0)),
             ("cube", (2, 0, 1)),
@@ -138,7 +137,8 @@ impl Game {
         ] {
             view.place(
                 GlobalPoint::from_absolute(x, y, z).unwrap(),
-                tile_set.get_index(name).unwrap(),
+                tiles.get_by_name(name).unwrap(),
+                VariantIndex(0),
             );
         }
 

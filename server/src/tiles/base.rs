@@ -1,4 +1,9 @@
-use crate::{layout::Data, prelude::*};
+use crate::{
+    cluster::Cluster,
+    layout::Data,
+    tile::{Placement, Tile},
+};
+use core::{point::GlobalPoint, prelude::VariantIndex};
 
 pub struct Base {
     height: u8,

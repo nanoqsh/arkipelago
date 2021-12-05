@@ -1,4 +1,4 @@
-use crate::{chunk::HEIGHT, prelude::*};
+use crate::{chunk::HEIGHT, point::ChunkPoints, prelude::*};
 use std::collections::HashMap;
 
 pub struct Map<T> {
@@ -102,6 +102,17 @@ impl<T> Map<T> {
             cl,
         })
     }
+
+    pub fn iter<S>(&self, cl: ClusterPoint) -> Option<Iter<S>>
+    where
+        T: AsRef<Chunk<S>>,
+    {
+        let chunk = self.chunk(cl)?;
+        Some(Iter {
+            chunk: chunk.as_ref(),
+            points: ChunkPoints::new(),
+        })
+    }
 }
 
 impl<T> Default for Map<T> {
@@ -146,5 +157,19 @@ impl<'a, T> Vicinity<'a, T> {
                 cell.unwrap()
             }
         }
+    }
+}
+
+pub struct Iter<'a, S> {
+    chunk: &'a Chunk<S>,
+    points: ChunkPoints,
+}
+
+impl<'a, S: 'a> Iterator for Iter<'a, S> {
+    type Item = (&'a S, ChunkPoint);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ch = self.points.next()?;
+        Some((self.chunk.get(ch), ch))
     }
 }

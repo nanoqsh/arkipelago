@@ -1,7 +1,5 @@
-use crate::{
-    slab::*,
-    tile::{TileIndex, VariantIndex},
-};
+use crate::slab::*;
+use core::prelude::*;
 use std::{any::Any, rc::Rc};
 
 #[derive(Copy, Clone)]
@@ -28,6 +26,7 @@ pub enum Data {
 }
 
 impl Data {
+    #[allow(clippy::wrong_self_convention)]
     pub fn as_num(self) -> Num {
         match self {
             Data::Num(num) => num,
@@ -35,6 +34,7 @@ impl Data {
         }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn as_obj(self) -> Rc<dyn Any> {
         match self {
             Data::Obj(obj) => obj,

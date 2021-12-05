@@ -1,11 +1,5 @@
-use crate::{
-    layout::{Data, Layout, Num},
-    map::Map,
-    point::ChunkPoints,
-    prelude::*,
-    slab::*,
-    tile::TileSet,
-};
+use crate::{layout::*, slab::*, tile::*};
+use core::{map::Map, point::ChunkPoints, prelude::*};
 use std::{any::Any, cell::RefCell, rc::Rc};
 
 #[derive(Clone)]
@@ -178,23 +172,30 @@ impl Cluster {
         Some((slice, level))
     }
 
-    pub fn place(&mut self, gl: GlobalPoint, tile: TileIndex) -> Option<Placed> {
-        let tiles = Rc::clone(&self.tile_set);
-        let tile_obj = tiles.get(tile).unwrap();
-        let height = tile_obj.height();
-        let (lo, hi) = self.map.slice_mut(gl, height);
-        if !lo.iter().chain(hi.iter()).copied().all(Slab::is_empty) {
+    pub fn is_empty(&self, gl: GlobalPoint, height: u8) -> bool {
+        match self.map.slice(gl, height) {
+            Some((lo, hi)) => lo.iter().chain(hi.iter()).copied().all(Slab::is_empty),
+            None => true,
+        }
+    }
+
+    pub fn place(&mut self, gl: GlobalPoint, tile_idx: TileIndex) -> Option<Placed> {
+        let tile_set = Rc::clone(&self.tile_set);
+        let tile = tile_set.get(tile_idx).unwrap();
+        let height = tile.height();
+        if !self.is_empty(gl, height) {
             return None;
         }
 
-        let placement = tile_obj.place(self, gl);
+        let placement = tile.place(self, gl);
         assert_eq!(height, placement.data.len() as u8 + 1);
         let layout = Layout {
-            tile,
+            tile: tile_idx,
             variant: placement.variant,
             data: placement.data,
         };
 
+        self.map.slice_mut(gl, height);
         let cl = gl.cluster_point();
         let storages = (
             self.map.chunk(cl).unwrap().storage.clone(),
@@ -284,7 +285,7 @@ mod tests {
     }
 
     fn cluster() -> (Cluster, TileIndex) {
-        let mut tile_set = TileSet::new();
+        let mut tile_set = TileSet::new([]);
         let index = tile_set.add(
             "test",
             Box::new(TestTile {

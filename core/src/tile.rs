@@ -1,23 +1,17 @@
-use crate::{layout::Data, prelude::*, tiles};
+use crate::chunk;
 use std::{collections::HashMap, fmt};
 
-pub struct Placement<'a> {
-    pub variant: VariantIndex,
-    pub data: &'a [Data],
-}
-
-pub trait Tile {
-    fn height(&self) -> u8;
-
-    fn variants(&self) -> &[&'static str];
-
-    fn place(&self, cluster: &mut Cluster, point: GlobalPoint) -> Placement;
-}
-
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
-pub struct TileIndex(pub(crate) u16);
+pub struct TileIndex(u16);
 
 impl TileIndex {
+    pub const fn new(idx: u16) -> Option<Self> {
+        match idx {
+            0 => None,
+            _ => Some(Self(idx)),
+        }
+    }
+
     pub const fn get(self) -> u16 {
         self.0
     }
@@ -56,106 +50,127 @@ impl fmt::Debug for VariantIndex {
     }
 }
 
-pub struct TileSet {
-    map: HashMap<String, TileIndex>,
-    vec: Vec<Box<dyn Tile>>,
+#[derive(Copy, Clone)]
+pub struct Height(u8);
+
+impl Height {
+    pub const fn new(height: u8) -> Option<Self> {
+        const HEIGHT: u8 = chunk::HEIGHT as u8;
+
+        match height {
+            1..=HEIGHT => Some(Self(height)),
+            _ => None,
+        }
+    }
+
+    pub const fn get(self) -> u8 {
+        self.0
+    }
 }
 
-impl TileSet {
+impl fmt::Display for Height {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Debug for Height {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+pub struct TileInfo {
+    idx: TileIndex,
+    name: &'static str,
+    height: Height,
+    variants: Vec<(&'static str, VariantIndex)>,
+}
+
+impl TileInfo {
+    pub fn index(&self) -> TileIndex {
+        self.idx
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn height(&self) -> Height {
+        self.height
+    }
+
+    pub fn variants(&self) -> &[(&'static str, VariantIndex)] {
+        &self.variants
+    }
+}
+
+pub struct TileList {
+    map: HashMap<&'static str, TileIndex>,
+    vec: Vec<TileInfo>,
+}
+
+impl TileList {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        let mut tile_set = Self {
+        let mut list = Self {
             map: HashMap::default(),
-            vec: vec![Box::new(tiles::Empty)],
+            vec: vec![TileInfo {
+                idx: TileIndex::new(1).unwrap(),
+                name: "",
+                height: Height::new(1).unwrap(),
+                variants: Vec::default(),
+            }],
         };
 
-        let tiles = [
-            ("cube", Box::new(tiles::Base::new(2, vec!["cube"]))),
-            ("slab", Box::new(tiles::Base::new(1, vec!["slab"]))),
-            ("half", Box::new(tiles::Base::new(1, vec!["half"]))),
-            ("bevel_0", Box::new(tiles::Base::new(1, vec!["bevel"]))),
-            ("bevel_1", Box::new(tiles::Base::new(1, vec!["bevel_q1"]))),
-            ("bevel_2", Box::new(tiles::Base::new(1, vec!["bevel_q2"]))),
-            ("bevel_3", Box::new(tiles::Base::new(1, vec!["bevel_q3"]))),
-            ("steps_0", Box::new(tiles::Base::new(2, vec!["steps"]))),
-            ("steps_1", Box::new(tiles::Base::new(2, vec!["steps_q1"]))),
-            ("steps_2", Box::new(tiles::Base::new(2, vec!["steps_q2"]))),
-            ("steps_3", Box::new(tiles::Base::new(2, vec!["steps_q3"]))),
-        ];
-
-        for (key, tile) in tiles {
-            tile_set.add(key, tile);
-        }
-
-        tile_set
+        list.add("cube", 2, ["cube"]);
+        list.add("slab", 1, ["slab"]);
+        list.add("half", 1, ["half"]);
+        list.add("bevel_0", 1, ["bevel"]);
+        list.add("bevel_1", 1, ["bevel_q1"]);
+        list.add("bevel_2", 1, ["bevel_q2"]);
+        list.add("bevel_3", 1, ["bevel_q3"]);
+        list.add("steps_0", 2, ["steps"]);
+        list.add("steps_1", 2, ["steps_q1"]);
+        list.add("steps_2", 2, ["steps_q2"]);
+        list.add("steps_3", 2, ["steps_q3"]);
+        list
     }
 
-    pub fn get<I>(&self, index: I) -> Option<&dyn Tile>
+    pub fn add<V>(&mut self, name: &'static str, height: u8, variants: V)
     where
-        Self: GetTile<I>,
-    {
-        self.get_tile(index)
-    }
-
-    pub fn get_index(&self, key: &str) -> Option<TileIndex> {
-        self.map.get(key).copied()
-    }
-
-    pub fn tiles(&self) -> Tiles {
-        Tiles {
-            tile_set: self,
-            idx: 1,
-        }
-    }
-
-    pub fn add<K>(&mut self, key: K, tile: Box<dyn Tile>) -> TileIndex
-    where
-        K: Into<String>,
+        V: IntoIterator<Item = &'static str>,
     {
         let idx = self.vec.len();
         assert!(idx <= u16::MAX as usize);
-        let tile_idx = TileIndex(idx as u16);
-        let old = self.map.insert(key.into(), tile_idx);
+        let tile_idx = TileIndex::new(idx as u16).unwrap();
+        let old = self.map.insert(name, tile_idx);
         assert!(old.is_none());
-        self.vec.push(tile);
-        tile_idx
+        self.vec.push(TileInfo {
+            idx: tile_idx,
+            name,
+            variants: variants
+                .into_iter()
+                .enumerate()
+                .map(|(idx, name)| {
+                    assert!(idx <= u8::MAX as usize);
+                    (name, VariantIndex(idx as u8))
+                })
+                .collect(),
+            height: Height::new(height).unwrap(),
+        });
     }
-}
 
-pub trait GetTile<I> {
-    fn get_tile(&self, idx: I) -> Option<&dyn Tile>;
-}
-
-impl GetTile<TileIndex> for TileSet {
-    fn get_tile(&self, idx: TileIndex) -> Option<&dyn Tile> {
-        debug_assert_ne!(idx.0, 0);
-        self.vec.get(idx.0 as usize).map(Box::as_ref)
+    pub fn get(&self, idx: TileIndex) -> &TileInfo {
+        self.vec.get(idx.0 as usize).unwrap()
     }
-}
 
-impl<T: AsRef<str>> GetTile<T> for TileSet {
-    fn get_tile(&self, idx: T) -> Option<&dyn Tile> {
-        let tile_idx = *self.map.get(idx.as_ref())?;
-        self.get_tile(tile_idx)
+    pub fn get_by_name(&self, name: &str) -> Option<&TileInfo> {
+        let idx = self.map.get(name)?;
+        Some(self.get(*idx))
     }
-}
 
-pub struct Tiles<'a> {
-    tile_set: &'a TileSet,
-    idx: u16,
-}
-
-impl<'a> Iterator for Tiles<'a> {
-    type Item = (TileIndex, &'a dyn Tile);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.idx < self.tile_set.vec.len() as u16 {
-            let tile_idx = TileIndex(self.idx);
-            let tile = self.tile_set.get(tile_idx).unwrap();
-            self.idx += 1;
-            Some((tile_idx, tile))
-        } else {
-            None
-        }
+    pub fn iter(&self) -> impl Iterator<Item = &TileInfo> {
+        self.vec.iter()
     }
 }

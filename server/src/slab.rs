@@ -1,4 +1,4 @@
-use crate::tile::{TileIndex, VariantIndex};
+use core::prelude::{TileIndex, VariantIndex};
 
 /// Slab layout.
 ///
@@ -70,8 +70,8 @@ impl Base {
         )
     }
 
-    pub const fn tile(self) -> TileIndex {
-        TileIndex(self.0)
+    pub fn tile(self) -> TileIndex {
+        TileIndex::new(self.0).unwrap()
     }
 
     pub const fn variant(self) -> VariantIndex {

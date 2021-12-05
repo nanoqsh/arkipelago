@@ -1,7 +1,15 @@
+mod cluster;
 mod config;
+mod layout;
+mod slab;
+mod tile;
+mod tiles;
 
-use self::config::Config;
-use core::net::{Login, Unpacked};
+use self::{config::Config, tile::TileSet};
+use core::{
+    net::{Login, Unpacked},
+    prelude::*,
+};
 use std::io;
 use tokio::{
     io::{AsyncReadExt, BufReader},
@@ -43,6 +51,9 @@ async fn main() {
 
     let addr = listener.local_addr().unwrap();
     println!("The server is listening on {}", addr);
+
+    let tiles = TileList::new();
+    let _ = TileSet::new(tiles.iter());
 
     loop {
         let mut stream = match listener.accept().await {
