@@ -54,6 +54,9 @@ impl Render {
     {
         let ctx = Rc::new(Context::from_loader_function(|s| load(s).cast()));
 
+        ctx.enable(glow::CULL_FACE);
+        ctx.cull_face(glow::BACK);
+
         Self {
             shaders: Shaders::new(Rc::clone(&ctx)),
             frame: Frame::new(Rc::clone(&ctx), UVec2::new(1, 1), 0),

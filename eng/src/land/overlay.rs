@@ -1,4 +1,4 @@
-use crate::land::polygon::{Polygon, Polygons};
+use crate::land::polygon::{Axis, Polygon, Polygons};
 use core::prelude::*;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -96,10 +96,10 @@ impl Connections {
         }
     }
 
-    pub fn overlaps(&self, rhs: &Self, side: Side, man: &Polygons) -> bool {
+    pub fn overlaps(&self, rhs: &Self, side: Side, man: &Polygons, axis: Axis) -> bool {
         let a = self.get(side);
         let b = rhs.get(side.opposite());
-        a.overlaps(b, |a, b| man.eq(a, b))
+        a.overlaps(b, |a, b| man.eq(a, b, axis))
     }
 }
 

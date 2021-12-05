@@ -1,0 +1,14 @@
+{
+    "mesh": {
+        "name": "grass",
+        "height": 2
+    },
+    "overlay": [
+        {
+            ".": "none"
+        },
+        {
+            ".": "none"
+        }
+    ]
+}

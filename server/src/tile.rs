@@ -33,18 +33,7 @@ impl TileSet {
         for info in tiles {
             let name = info.name();
             let tile = match name {
-                "cube" => Box::new(tiles::Base::new(2, vec!["cube"])),
-                "slab" => Box::new(tiles::Base::new(1, vec!["slab"])),
-                "half" => Box::new(tiles::Base::new(1, vec!["half"])),
-                "bevel_0" => Box::new(tiles::Base::new(1, vec!["bevel"])),
-                "bevel_1" => Box::new(tiles::Base::new(1, vec!["bevel_q1"])),
-                "bevel_2" => Box::new(tiles::Base::new(1, vec!["bevel_q2"])),
-                "bevel_3" => Box::new(tiles::Base::new(1, vec!["bevel_q3"])),
-                "steps_0" => Box::new(tiles::Base::new(2, vec!["steps"])),
-                "steps_1" => Box::new(tiles::Base::new(2, vec!["steps_q1"])),
-                "steps_2" => Box::new(tiles::Base::new(2, vec!["steps_q2"])),
-                "steps_3" => Box::new(tiles::Base::new(2, vec!["steps_q3"])),
-                _ => panic!("undefined tile"),
+                _ => Box::new(tiles::Base::new(2, vec!["cube"])),
             };
 
             tile_set.add(name, tile);

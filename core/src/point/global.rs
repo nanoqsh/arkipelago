@@ -16,8 +16,29 @@ impl GlobalPoint {
     }
 
     pub fn from_absolute(x: i64, y: i64, z: i64) -> Result<Self, Error> {
-        let (chx, chy, chz) = (x % SIDE as i64, y % HEIGHT as i64, z % SIDE as i64);
-        let (clx, cly, clz) = (x / SIDE as i64, y / HEIGHT as i64, z / SIDE as i64);
+        fn modl(i: i64, n: i64) -> i64 {
+            (i % n + n) % n
+        }
+
+        let (chx, chy, chz) = (
+            modl(x, SIDE as i64),
+            modl(y, HEIGHT as i64),
+            modl(z, SIDE as i64),
+        );
+        let (mut clx, mut cly, mut clz) = (x / SIDE as i64, y / HEIGHT as i64, z / SIDE as i64);
+
+        if x < 0 {
+            clx -= 1;
+        }
+
+        if y < 0 {
+            cly -= 1;
+        }
+
+        if z < 0 {
+            clz -= 1;
+        }
+
         Ok(Self::new(
             ChunkPoint::new(chx as u8, chy as u8, chz as u8).unwrap(),
             ClusterPoint::new(clx.try_into()?, cly.try_into()?, clz.try_into()?)?,

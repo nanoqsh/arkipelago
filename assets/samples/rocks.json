@@ -1,0 +1,11 @@
+{
+    "mesh": {
+        "name": "rocks",
+        "height": 1
+    },
+    "overlay": [
+        {
+            ".": "none"
+        }
+    ]
+}

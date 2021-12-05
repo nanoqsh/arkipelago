@@ -18,7 +18,7 @@ impl App {
     }
 
     fn resize(&mut self, size: (u32, u32)) {
-        self.render.resize(size, 2);
+        self.render.resize(size, 1);
         self.game.resize(size);
     }
 

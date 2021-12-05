@@ -101,7 +101,10 @@ impl VariantSet {
     }
 
     pub fn get(&self, key: (TileIndex, VariantIndex)) -> &Variant {
-        self.0.get(&key).unwrap()
+        match self.0.get(&key) {
+            Some(variant) => variant,
+            None => panic!("not found {} {}", key.0, key.1),
+        }
     }
 
     pub fn add(&mut self, key: (TileIndex, VariantIndex), variant: Variant) {

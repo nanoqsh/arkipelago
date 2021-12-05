@@ -53,7 +53,7 @@ impl<T: Copy> Rectangle<T> {
     }
 
     pub fn rect_points(self) -> [Vector2<T>; 4] {
-        [self.a, self.left_top(), self.b, self.right_bot()]
+        [self.a, self.right_bot(), self.b, self.left_top()]
     }
 }
 

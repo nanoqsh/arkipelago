@@ -12,12 +12,14 @@ use std::{collections::HashMap, error, fmt, rc::Rc};
 
 #[derive(Debug)]
 enum SampleError {
+    OverlayLen(usize),
     Overlay(String),
 }
 
 impl fmt::Display for SampleError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::OverlayLen(len) => write!(f, "wrong overlay len {}", len),
             Self::Overlay(str) => write!(f, "wrong overlay {}", str),
         }
     }
@@ -67,6 +69,15 @@ fn load<M>(sample: RawSample, mut load_mesh: M, polygons: &mut Polygons) -> Resu
 where
     M: FnMut(&str) -> Result<Rc<Mesh>, Error>,
 {
+    let mesh_height = match sample.mesh {
+        RawMesh::Name(_) => 1,
+        RawMesh::Obj { height, .. } => height.unwrap_or(1) as usize,
+    };
+    let overlay_len = sample.overlay.len();
+    if overlay_len != mesh_height {
+        return Err(SampleError::OverlayLen(overlay_len).into());
+    }
+
     Ok(Sample {
         shape: {
             let (name, height, contact) = match sample.mesh {

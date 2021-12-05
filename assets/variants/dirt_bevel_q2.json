@@ -1,9 +1,9 @@
 {
     "samples": [
         {
-            "name": "steps",
+            "name": "bevel",
             "rotation": 2
         }
     ],
-    "sprite": "stone"
+    "sprite": "dirt_0"
 }

@@ -1,8 +1,8 @@
 {
     "samples": [
         {
-            "name": "steps",
-            "rotation": 3
+            "name": "bevel_vertical",
+            "rotation": 1
         }
     ],
     "sprite": "stone"

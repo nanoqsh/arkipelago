@@ -123,17 +123,37 @@ impl TileList {
             }],
         };
 
-        list.add("cube", 2, ["cube"]);
-        list.add("slab", 1, ["slab"]);
-        list.add("half", 1, ["half"]);
-        list.add("bevel_0", 1, ["bevel"]);
-        list.add("bevel_1", 1, ["bevel_q1"]);
-        list.add("bevel_2", 1, ["bevel_q2"]);
-        list.add("bevel_3", 1, ["bevel_q3"]);
-        list.add("steps_0", 2, ["steps"]);
-        list.add("steps_1", 2, ["steps_q1"]);
-        list.add("steps_2", 2, ["steps_q2"]);
-        list.add("steps_3", 2, ["steps_q3"]);
+        list.add(
+            "dirt",
+            1,
+            [
+                "dirt",
+                "dirt_bevel_q0",
+                "dirt_bevel_q1",
+                "dirt_bevel_q2",
+                "dirt_bevel_q3",
+            ],
+        );
+        list.add("grass", 2, ["grass_0", "grass_1"]);
+        list.add("rocks", 1, ["rocks"]);
+        list.add(
+            "stone",
+            2,
+            [
+                "stone",
+                "stone_bevel_q0",
+                "stone_bevel_q1",
+                "stone_bevel_q2",
+                "stone_bevel_q3",
+                "stone_bevel_vertical_q0",
+                "stone_bevel_vertical_q1",
+                "stone_bevel_vertical_q2",
+                "stone_bevel_vertical_q3",
+            ],
+        );
+        list.add("bricks", 2, ["bricks"]);
+        list.add("box", 2, ["box"]);
+        list.add("steps", 2, ["steps_q0", "steps_q1", "steps_q2", "steps_q3"]);
         list
     }
 

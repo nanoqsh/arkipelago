@@ -19,21 +19,31 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
+#[derive(Copy, Clone)]
+pub(crate) enum Axis {
+    X,
+    Y,
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, PartialOrd)]
 #[serde(try_from = "(f32, f32)")]
 pub(crate) struct Point(f32, f32);
 
 impl Point {
-    fn flipped(self) -> Self {
+    fn flipped_x(self) -> Self {
         Self(1. - self.0, self.1)
+    }
+
+    fn flipped_y(self) -> Self {
+        Self(self.0, 1. - self.1)
     }
 
     fn rotated(self, rotation: Rotation) -> Self {
         match rotation {
             Rotation::Q0 => self,
-            Rotation::Q1 => Self(self.1, self.0),
-            Rotation::Q2 => self.flipped(),
-            Rotation::Q3 => Self(self.1, self.0).flipped(),
+            Rotation::Q1 => Self(1. - self.1, self.0),
+            Rotation::Q2 => Self(1. - self.0, 1. - self.1),
+            Rotation::Q3 => Self(self.1, 1. - self.0),
         }
     }
 }
@@ -54,7 +64,7 @@ impl TryFrom<(f32, f32)> for Point {
 #[serde(try_from = "Box<[Point]>")]
 pub(crate) struct Polygon {
     points: Box<[Point]>,
-    y_symmetric: bool,
+    symmetric: (bool, bool),
 }
 
 impl Polygon {
@@ -68,23 +78,31 @@ impl Polygon {
             _ => {
                 let mut polygon = Self {
                     points,
-                    y_symmetric: false,
+                    symmetric: (false, false),
                 };
 
-                polygon.y_symmetric = polygon == polygon.flipped();
+                polygon.symmetric = (
+                    polygon == polygon.flipped_x(),
+                    polygon == polygon.flipped_y(),
+                );
+
                 Ok(polygon)
             }
         }
     }
 
-    pub fn flipped(&self) -> Flipped {
-        Flipped(self)
+    pub fn flipped_x(&self) -> FlippedX {
+        FlippedX(self)
+    }
+
+    pub fn flipped_y(&self) -> FlippedY {
+        FlippedY(self)
     }
 
     pub fn rotated(&self, rotation: Rotation) -> Result<Self, &Self> {
         match rotation {
             Rotation::Q0 => return Err(self),
-            Rotation::Q2 if self.y_symmetric => return Err(self),
+            Rotation::Q2 if self.symmetric.0 => return Err(self),
             _ => (),
         }
 
@@ -93,14 +111,7 @@ impl Polygon {
             *point = point.rotated(rotation);
         }
 
-        if let Rotation::Q1 = rotation {
-            new.points.reverse();
-        }
-
-        if let Rotation::Q1 | Rotation::Q3 = rotation {
-            new.y_symmetric = new == new.flipped();
-        }
-
+        new.symmetric = (new == new.flipped_x(), new == new.flipped_y());
         Ok(new)
     }
 
@@ -139,11 +150,20 @@ impl TryFrom<Box<[Point]>> for Polygon {
 }
 
 #[derive(Debug)]
-pub(crate) struct Flipped<'a>(&'a Polygon);
+pub(crate) struct FlippedX<'a>(&'a Polygon);
 
-impl PartialEq<Flipped<'_>> for Polygon {
-    fn eq(&self, rhs: &Flipped) -> bool {
-        self.eq(rhs.0.points.iter().rev().copied().map(Point::flipped))
+impl PartialEq<FlippedX<'_>> for Polygon {
+    fn eq(&self, rhs: &FlippedX) -> bool {
+        self.eq(rhs.0.points.iter().rev().copied().map(Point::flipped_x))
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct FlippedY<'a>(&'a Polygon);
+
+impl PartialEq<FlippedY<'_>> for Polygon {
+    fn eq(&self, rhs: &FlippedY) -> bool {
+        self.eq(rhs.0.points.iter().rev().copied().map(Point::flipped_y))
     }
 }
 
@@ -171,14 +191,28 @@ impl Polygons {
         self.0.shrink_to_fit()
     }
 
-    pub fn eq(&self, a: u16, b: u16) -> bool {
+    pub fn eq(&self, a: u16, b: u16, axis: Axis) -> bool {
         let lhs = self.get(a);
-        if lhs.y_symmetric && a == b {
-            return true;
-        }
+        match axis {
+            Axis::X => {
+                if lhs.symmetric.0 && a == b {
+                    println!("[ DEBUG ] Skipped x");
+                    return true;
+                }
 
-        let rhs = self.get(b);
-        lhs == &rhs.flipped()
+                let rhs = self.get(b);
+                lhs == &rhs.flipped_x()
+            }
+            Axis::Y => {
+                if lhs.symmetric.1 && a == b {
+                    println!("[ DEBUG ] Skipped y");
+                    return true;
+                }
+
+                let rhs = self.get(b);
+                lhs == &rhs.flipped_y()
+            }
+        }
     }
 
     pub fn get(&self, idx: u16) -> &Polygon {
@@ -234,7 +268,7 @@ mod tests {
     }
 
     #[test]
-    fn eq_flipped() {
+    fn eq_flipped_x() {
         let a = Polygon::new([
             (0., 0.).try_into().unwrap(),
             (0., 1.).try_into().unwrap(),
@@ -247,8 +281,8 @@ mod tests {
             (1., 0.).try_into().unwrap(),
         ])
         .unwrap();
-        assert_eq!(a, b.flipped());
-        assert_eq!(b, a.flipped());
+        assert_eq!(a, b.flipped_x());
+        assert_eq!(b, a.flipped_x());
 
         let a = Polygon::new([
             (0., 0.).try_into().unwrap(),
@@ -265,7 +299,7 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(a, b);
-        assert_eq!(a, b.flipped());
+        assert_eq!(a, b.flipped_x());
     }
 
     #[test]
@@ -283,10 +317,10 @@ mod tests {
         let c = polygon.rotated(Rotation::Q2).unwrap_err();
         let d = polygon.rotated(Rotation::Q3).unwrap();
 
-        assert!(a.y_symmetric);
-        assert!(b.y_symmetric);
-        assert!(c.y_symmetric);
-        assert!(d.y_symmetric);
+        assert!(a.symmetric.0 && a.symmetric.1);
+        assert!(b.symmetric.0 && b.symmetric.1);
+        assert!(c.symmetric.0 && c.symmetric.1);
+        assert!(d.symmetric.0 && d.symmetric.1);
 
         assert_eq!(&polygon, a);
         assert_eq!(&polygon, &b);

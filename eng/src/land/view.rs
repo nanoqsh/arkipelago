@@ -1,5 +1,9 @@
 use crate::{
-    land::{polygon::Polygons, variant::VariantSet, Builder, Connections},
+    land::{
+        polygon::{Axis, Polygons},
+        variant::VariantSet,
+        Builder, Connections,
+    },
     IndexedMesh, Render,
 };
 use core::{map::Map, prelude::*};
@@ -128,6 +132,7 @@ impl ClusterView {
                                     connections.last().unwrap(),
                                     Side::Down,
                                     &self.polygons,
+                                    Axis::Y,
                                 ) {
                                     sides |= Side::Up;
                                 }
@@ -139,6 +144,7 @@ impl ClusterView {
                                         connections.last().unwrap(),
                                         Side::Down,
                                         &self.polygons,
+                                        Axis::Y,
                                     ) {
                                         sides |= Side::Up;
                                     }
@@ -158,6 +164,7 @@ impl ClusterView {
                                     connections.first().unwrap(),
                                     Side::Up,
                                     &self.polygons,
+                                    Axis::Y,
                                 ) {
                                     sides |= Side::Down;
                                 }
@@ -169,6 +176,7 @@ impl ClusterView {
                                         connections.first().unwrap(),
                                         Side::Up,
                                         &self.polygons,
+                                        Axis::Y,
                                     ) {
                                         sides |= Side::Down;
                                     }
@@ -200,6 +208,7 @@ impl ClusterView {
                                 conn,
                                 side.opposite(),
                                 &self.polygons,
+                                Axis::X,
                             ) {
                                 sides |= side;
                                 break;
