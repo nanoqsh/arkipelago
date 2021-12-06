@@ -32,10 +32,7 @@ impl TileSet {
 
         for info in tiles {
             let name = info.name();
-            let tile = match name {
-                _ => Box::new(tiles::Base::new(2, vec!["cube"])),
-            };
-
+            let tile = Box::new(tiles::Base::new(2, vec!["cube"]));
             tile_set.add(name, tile);
         }
 

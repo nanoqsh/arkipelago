@@ -1,4 +1,5 @@
 use crate::chunk;
+use serde::Deserialize;
 use std::{collections::HashMap, fmt};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
@@ -50,7 +51,8 @@ impl fmt::Debug for VariantIndex {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Deserialize)]
+#[serde(try_from = "u8")]
 pub struct Height(u8);
 
 impl Height {
@@ -65,6 +67,20 @@ impl Height {
 
     pub const fn get(self) -> u8 {
         self.0
+    }
+}
+
+impl TryFrom<u8> for Height {
+    type Error = u8;
+
+    fn try_from(val: u8) -> Result<Self, Self::Error> {
+        Self::new(val).ok_or(val)
+    }
+}
+
+impl Default for Height {
+    fn default() -> Self {
+        Self(1)
     }
 }
 

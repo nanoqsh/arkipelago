@@ -33,7 +33,7 @@ enum RawMesh<'a> {
     Name(&'a str),
     Obj {
         name: &'a str,
-        height: Option<u8>,
+        height: Option<Height>,
         #[serde(default)]
         contact: HashMap<String, Sides>,
     },
@@ -56,7 +56,7 @@ pub(crate) struct RawSample<'a> {
 
 pub(crate) struct ToShape {
     pub mesh: Rc<Mesh>,
-    pub height: u8,
+    pub height: Height,
     pub contact: HashMap<String, Sides>,
 }
 
@@ -69,25 +69,21 @@ fn load<M>(sample: RawSample, mut load_mesh: M, polygons: &mut Polygons) -> Resu
 where
     M: FnMut(&str) -> Result<Rc<Mesh>, Error>,
 {
-    let mesh_height = match sample.mesh {
-        RawMesh::Name(_) => 1,
-        RawMesh::Obj { height, .. } => height.unwrap_or(1) as usize,
-    };
-    let overlay_len = sample.overlay.len();
-    if overlay_len != mesh_height {
-        return Err(SampleError::OverlayLen(overlay_len).into());
-    }
-
     Ok(Sample {
         shape: {
             let (name, height, contact) = match sample.mesh {
-                RawMesh::Name(name) => (name, 1, HashMap::default()),
+                RawMesh::Name(name) => (name, Height::default(), HashMap::default()),
                 RawMesh::Obj {
                     name,
                     height,
                     contact,
-                } => (name, height.unwrap_or(1), contact),
+                } => (name, height.unwrap_or_default(), contact),
             };
+
+            let overlay_len = sample.overlay.len();
+            if overlay_len != height.get() as usize {
+                return Err(SampleError::OverlayLen(overlay_len).into());
+            }
 
             ToShape {
                 mesh: load_mesh(name)?,

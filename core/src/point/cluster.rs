@@ -1,6 +1,6 @@
 use crate::{point::Error, side::Side};
 use shr::cgm::*;
-use std::fmt;
+use std::{fmt, ops};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct ClusterPoint {
@@ -15,7 +15,14 @@ impl ClusterPoint {
             return Err(Error);
         }
 
-        Ok(Self { x, y, z })
+        Ok(unsafe { Self::new_unchecked(x, y, z) })
+    }
+
+    const unsafe fn new_unchecked(x: i32, y: i32, z: i32) -> Self {
+        debug_assert!(x != i32::MIN);
+        debug_assert!(y != i32::MIN);
+        debug_assert!(z != i32::MIN);
+        Self { x, y, z }
     }
 
     pub const fn x(self) -> i32 {
@@ -105,5 +112,65 @@ impl fmt::Display for ClusterPoint {
 impl fmt::Debug for ClusterPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl ops::AddAssign for ClusterPoint {
+    fn add_assign(&mut self, rhs: Self) {
+        let x = match self.x.wrapping_add(rhs.x) {
+            i32::MIN => i32::MAX,
+            x => x,
+        };
+
+        let y = match self.y.wrapping_add(rhs.y) {
+            i32::MIN => i32::MAX,
+            y => y,
+        };
+
+        let z = match self.z.wrapping_add(rhs.z) {
+            i32::MIN => i32::MAX,
+            z => z,
+        };
+
+        *self = unsafe { Self::new_unchecked(x, y, z) };
+    }
+}
+
+impl ops::Add for ClusterPoint {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl ops::SubAssign for ClusterPoint {
+    fn sub_assign(&mut self, rhs: Self) {
+        let x = match self.x.wrapping_sub(rhs.x) {
+            i32::MIN => i32::MAX,
+            x => x,
+        };
+
+        let y = match self.y.wrapping_sub(rhs.y) {
+            i32::MIN => i32::MAX,
+            y => y,
+        };
+
+        let z = match self.z.wrapping_sub(rhs.z) {
+            i32::MIN => i32::MAX,
+            z => z,
+        };
+
+        *self = unsafe { Self::new_unchecked(x, y, z) };
+    }
+}
+
+impl ops::Sub for ClusterPoint {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
+        self
     }
 }

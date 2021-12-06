@@ -24,7 +24,7 @@ impl error::Error for Error {}
 pub(crate) struct Mesh {
     pub shape: Rc<Shape>,
     pub sprites_st: Box<[Vec2]>,
-    pub height: u8,
+    pub height: Height,
 }
 
 pub(crate) struct Variant {
@@ -73,8 +73,9 @@ impl Variant {
     {
         let mut level = 0;
         for mesh in self.meshes.iter() {
+            let height = mesh.height.get();
             mesh.shape.build(
-                sides(level, mesh.height),
+                sides(level, height),
                 |vert, slot| Vert {
                     co: vert.co + offset,
                     nm: vert.nm,
@@ -87,8 +88,8 @@ impl Variant {
                 builder,
             );
 
-            level += mesh.height;
-            offset.y += 0.5 * mesh.height as f32;
+            level += height;
+            offset.y += 0.5 * height as f32;
         }
     }
 }

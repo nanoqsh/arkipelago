@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 mod cluster;
 mod config;
 mod layout;

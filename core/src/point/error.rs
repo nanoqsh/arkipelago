@@ -1,6 +1,6 @@
 use std::{error, fmt, num::TryFromIntError};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Error;
 
 impl fmt::Display for Error {

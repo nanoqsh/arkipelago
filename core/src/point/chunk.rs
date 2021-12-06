@@ -1,7 +1,7 @@
 use crate::{
     chunk::{HEIGHT, SIDE},
     point::Error,
-    prelude::Side,
+    side::Side,
 };
 use shr::cgm::*;
 use std::fmt;
@@ -13,7 +13,7 @@ const CHUNK_HEIGHT_MAX: u8 = HEIGHT as u8 - 1;
 pub struct ChunkPoint(u16);
 
 impl ChunkPoint {
-    pub fn new(x: u8, y: u8, z: u8) -> Result<Self, Error> {
+    pub const fn new(x: u8, y: u8, z: u8) -> Result<Self, Error> {
         let (x, y, z) = match (x, y, z) {
             (0..=CHUNK_SIDE_MAX, 0..=CHUNK_HEIGHT_MAX, 0..=CHUNK_SIDE_MAX) => (x, y, z),
             _ => return Err(Error),
@@ -22,7 +22,7 @@ impl ChunkPoint {
         Ok(unsafe { Self::new_unchecked(x, y, z) })
     }
 
-    unsafe fn new_unchecked(x: u8, y: u8, z: u8) -> Self {
+    const unsafe fn new_unchecked(x: u8, y: u8, z: u8) -> Self {
         debug_assert!(x <= CHUNK_SIDE_MAX);
         debug_assert!(y <= CHUNK_HEIGHT_MAX);
         debug_assert!(z <= CHUNK_SIDE_MAX);
@@ -82,6 +82,42 @@ impl ChunkPoint {
                     Err(Self::new(x, y, (SIDE as u8).wrapping_sub(n) + z).unwrap())
                 }
             }
+        }
+    }
+
+    pub fn wrapping_add(self, rhs: Self) -> Self {
+        let (lx, ly, lz) = self.axes();
+        let (rx, ry, rz) = rhs.axes();
+        unsafe {
+            Self::new_unchecked(
+                (lx + rx) % SIDE as u8,
+                (ly + ry) % HEIGHT as u8,
+                (lz + rz) % SIDE as u8,
+            )
+        }
+    }
+
+    pub fn wrapping_sub(self, rhs: Self) -> Self {
+        let (lx, ly, lz) = self.axes();
+        let (rx, ry, rz) = rhs.axes();
+        unsafe {
+            Self::new_unchecked(
+                if lx >= rx {
+                    lx - rx
+                } else {
+                    (SIDE as u8) - rx + lx
+                },
+                if ly >= ry {
+                    ly - ry
+                } else {
+                    (HEIGHT as u8) - ry + ly
+                },
+                if lz >= rz {
+                    lz - rz
+                } else {
+                    (SIDE as u8) - rz + lz
+                },
+            )
         }
     }
 }
@@ -194,6 +230,7 @@ mod tests {
     #[test]
     fn to_right() {
         let a = ChunkPoint::new(1, 0, 0).unwrap();
+        assert_eq!(a.to(Side::Right, 0), Ok(a));
         assert_eq!(a.to(Side::Right, 1), Ok(ChunkPoint::new(0, 0, 0).unwrap()));
         assert_eq!(
             a.to(Side::Right, 2),
@@ -212,6 +249,7 @@ mod tests {
     #[test]
     fn to_down() {
         let a = ChunkPoint::new(0, 1, 0).unwrap();
+        assert_eq!(a.to(Side::Down, 0), Ok(a));
         assert_eq!(a.to(Side::Down, 1), Ok(ChunkPoint::new(0, 0, 0).unwrap()));
         assert_eq!(a.to(Side::Down, 2), Err(ChunkPoint::new(0, 31, 0).unwrap()));
     }
