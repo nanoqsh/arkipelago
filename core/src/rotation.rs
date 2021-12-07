@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::side::Side;
 use serde::Deserialize;
 use shr::cgm::Vec3;
 use std::{error, fmt};
@@ -38,11 +38,12 @@ impl Rotation {
         })
     }
 
-    pub const fn inverted(self) -> Self {
+    pub const fn opposite(self) -> Self {
         match self {
+            Self::Q0 => Self::Q2,
             Self::Q1 => Self::Q3,
+            Self::Q2 => Self::Q0,
             Self::Q3 => Self::Q1,
-            _ => self,
         }
     }
 
@@ -82,6 +83,17 @@ impl Rotation {
                 Self::Q3 => Side::Left,
             },
             _ => side,
+        }
+    }
+}
+
+impl From<Rotation> for Side {
+    fn from(rotation: Rotation) -> Self {
+        match rotation {
+            Rotation::Q0 => Side::Left,
+            Rotation::Q1 => Side::Back,
+            Rotation::Q2 => Side::Right,
+            Rotation::Q3 => Side::Forth,
         }
     }
 }

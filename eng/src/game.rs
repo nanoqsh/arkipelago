@@ -169,7 +169,7 @@ impl Game {
             ("stone", (6, 2, 6), 5),
         ] {
             view.place(
-                GlobalPoint::from_absolute(x, y, z).unwrap(),
+                Point::from_absolute(x, y, z).unwrap(),
                 tiles.get_by_name(name).unwrap(),
                 VariantIndex(variant),
             );

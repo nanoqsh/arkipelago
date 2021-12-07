@@ -3,7 +3,7 @@ use crate::{
     layout::Data,
     tile::{Placement, Tile},
 };
-use core::{point::GlobalPoint, prelude::VariantIndex};
+use core::{point::Point, prelude::VariantIndex};
 
 pub struct Base {
     height: u8,
@@ -25,7 +25,7 @@ impl Tile for Base {
         &self.variants
     }
 
-    fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
+    fn place(&self, _: &mut Cluster, _: Point) -> Placement {
         Placement {
             variant: VariantIndex(0),
             data: &[

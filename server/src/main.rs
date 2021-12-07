@@ -1,8 +1,10 @@
 #[allow(dead_code)]
 mod cluster;
 mod config;
+#[allow(dead_code)]
 mod layout;
 mod slab;
+#[allow(dead_code)]
 mod tile;
 mod tiles;
 

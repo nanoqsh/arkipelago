@@ -2,7 +2,7 @@ use crate::{
     cluster::Cluster,
     tile::{Placement, Tile},
 };
-use core::point::GlobalPoint;
+use core::point::Point;
 
 pub struct Empty;
 
@@ -15,7 +15,7 @@ impl Tile for Empty {
         unreachable!()
     }
 
-    fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
+    fn place(&self, _: &mut Cluster, _: Point) -> Placement {
         unreachable!()
     }
 }

@@ -1,5 +1,5 @@
 use crate::{cluster::Cluster, layout::Data, tiles};
-use core::{point::GlobalPoint, prelude::*};
+use core::{point::Point, prelude::*};
 use std::collections::HashMap;
 
 pub struct Placement<'a> {
@@ -12,7 +12,7 @@ pub trait Tile {
 
     fn variants(&self) -> &[&'static str];
 
-    fn place(&self, cluster: &mut Cluster, point: GlobalPoint) -> Placement;
+    fn place(&self, cluster: &mut Cluster, pn: Point) -> Placement;
 }
 
 pub struct TileSet {

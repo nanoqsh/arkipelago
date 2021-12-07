@@ -1,4 +1,4 @@
-use core::prelude::{TileIndex, VariantIndex};
+use core::prelude::{Height, TileIndex, VariantIndex};
 
 /// Slab layout.
 ///
@@ -63,10 +63,10 @@ pub(crate) struct Empty;
 pub(crate) struct Base(u16, u16);
 
 impl Base {
-    pub const fn new(tile: TileIndex, variant: VariantIndex, height: u8) -> Self {
+    pub const fn new(tile: TileIndex, variant: VariantIndex, height: Height) -> Self {
         Self(
             tile.get(),
-            variant.get() as u16 | ((height - 1) as u16) << 8,
+            variant.get() as u16 | ((height.get() - 1) as u16) << 8,
         )
     }
 
@@ -78,8 +78,8 @@ impl Base {
         VariantIndex(self.1 as u8)
     }
 
-    pub const fn height(self) -> u8 {
-        ((self.1 >> 8) as u8 & 0b111) + 1
+    pub fn height(self) -> Height {
+        Height::new(((self.1 >> 8) as u8 & 0b111) + 1).unwrap()
     }
 }
 

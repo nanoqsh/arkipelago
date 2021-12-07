@@ -51,8 +51,8 @@ pub(crate) struct Layout<'a> {
 }
 
 impl<'a> Layout<'a> {
-    pub fn height(&self) -> u8 {
-        self.data.len() as u8 + 1
+    pub fn height(&self) -> Height {
+        Height::new(self.data.len() as u8 + 1).unwrap()
     }
 
     pub fn base(self) -> Base {

@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::point::ChunkPoint;
 
 pub(crate) const SIDE: usize = 16;
 pub(crate) const HEIGHT: usize = SIDE * 2;

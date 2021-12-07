@@ -1,4 +1,4 @@
-use crate::{chunk::HEIGHT, point::ChunkPoints, prelude::*};
+use crate::{chunk::HEIGHT, height::Height, point::ChunkPoints, prelude::*};
 use std::collections::HashMap;
 
 pub struct Map<T> {
@@ -12,58 +12,60 @@ impl<T> Map<T> {
         }
     }
 
-    pub fn get<S>(&self, gl: GlobalPoint) -> Option<&S>
+    pub fn get<S>(&self, pn: Point) -> Option<&S>
     where
         T: AsRef<Chunk<S>>,
     {
-        let ch = gl.chunk_point();
-        let cl = gl.cluster_point();
+        let ch = pn.chunk_point();
+        let cl = pn.cluster_point();
         let chunk = self.chunk(cl)?;
         Some(chunk.as_ref().get(ch))
     }
 
-    pub fn get_mut<S>(&mut self, gl: GlobalPoint) -> &mut S
+    pub fn get_mut<S>(&mut self, pn: Point) -> &mut S
     where
         T: AsMut<Chunk<S>> + Default,
     {
-        let ch = gl.chunk_point();
-        let cl = gl.cluster_point();
+        let ch = pn.chunk_point();
+        let cl = pn.cluster_point();
         let chunk = self.chunk_mut(cl);
         chunk.as_mut().get_mut(ch)
     }
 
-    pub fn slice<S>(&self, gl: GlobalPoint, height: u8) -> Option<(&[S], &[S])>
+    pub fn column<S>(&self, pn: Point, height: Height) -> Option<Column<S>>
     where
         T: AsRef<Chunk<S>>,
     {
-        let ch = gl.chunk_point();
-        let cl = gl.cluster_point();
+        let height = height.get();
+        let ch = pn.chunk_point();
+        let cl = pn.cluster_point();
         let lo = self.chunk(cl)?;
         let u = ch.y().saturating_add(height);
         if u <= HEIGHT as u8 {
-            Some((lo.as_ref().slice(ch, height), &[]))
+            Some(Column(lo.as_ref().slice(ch, height), &[]))
         } else {
             let hh = u - HEIGHT as u8;
             let lh = height - hh;
             let (x, _, z) = ch.axes();
             let hi = self.chunk(cl.to(Side::Up))?;
-            Some((
+            Some(Column(
                 lo.as_ref().slice(ch, lh),
                 hi.as_ref().slice(ChunkPoint::new(x, 0, z).unwrap(), hh),
             ))
         }
     }
 
-    pub fn slice_mut<S>(&mut self, gl: GlobalPoint, height: u8) -> (&mut [S], &mut [S])
+    pub fn column_mut<S>(&mut self, pn: Point, height: Height) -> ColumnMut<S>
     where
         T: AsMut<Chunk<S>> + Default,
     {
-        let ch = gl.chunk_point();
-        let cl = gl.cluster_point();
+        let height = height.get();
+        let ch = pn.chunk_point();
+        let cl = pn.cluster_point();
         let u = ch.y().saturating_add(height);
         unsafe {
             if u <= HEIGHT as u8 {
-                (self.chunk_mut(cl).as_mut().slice_mut(ch, height), &mut [])
+                ColumnMut(self.chunk_mut(cl).as_mut().slice_mut(ch, height), &mut [])
             } else {
                 let hh = u - HEIGHT as u8;
                 let lh = height - hh;
@@ -73,7 +75,7 @@ impl<T> Map<T> {
                 let lo = self.chunks.get_mut(&cl).unwrap() as *mut T;
                 let hi = self.chunks.get_mut(&up).unwrap() as *mut T;
                 let (x, _, z) = ch.axes();
-                (
+                ColumnMut(
                     (*lo).as_mut().slice_mut(ch, lh),
                     (*hi)
                         .as_mut()
@@ -118,6 +120,55 @@ impl<T> Map<T> {
 impl<T> Default for Map<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct Column<'a, S>(pub &'a [S], pub &'a [S]);
+
+impl<'a, S> Column<'a, S> {
+    pub const fn len(&self) -> usize {
+        self.0.len() + self.1.len()
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        debug_assert!(!self.0.is_empty());
+        false
+    }
+
+    pub fn get(&self, idx: usize) -> &'a S {
+        if idx < self.0.len() {
+            &self.0[idx]
+        } else {
+            &self.1[idx - self.0.len()]
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &'a S> {
+        self.0.iter().chain(self.1)
+    }
+}
+
+pub struct ColumnMut<'a, S>(pub &'a mut [S], pub &'a mut [S]);
+
+impl<S> ColumnMut<'_, S> {
+    pub const fn len(&self) -> usize {
+        self.0.len() + self.1.len()
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> &mut S {
+        if idx < self.0.len() {
+            &mut self.0[idx]
+        } else {
+            &mut self.1[idx - self.0.len()]
+        }
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut S> {
+        self.0.iter_mut().chain(self.1.iter_mut())
     }
 }
 

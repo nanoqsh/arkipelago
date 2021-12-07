@@ -1,7 +1,7 @@
 use crate::{
     chunk::{HEIGHT, SIDE},
     point::*,
-    side::{Side, Sides},
+    side::Side,
 };
 use std::{error, fmt, num::ParseIntError, ops, str::FromStr};
 
@@ -43,12 +43,12 @@ impl fmt::Display for ParseError {
 impl error::Error for ParseError {}
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
-pub struct GlobalPoint {
+pub struct Point {
     ch: ChunkPoint,
     cl: ClusterPoint,
 }
 
-impl GlobalPoint {
+impl Point {
     pub const fn new(ch: ChunkPoint, cl: ClusterPoint) -> Self {
         Self { ch, cl }
     }
@@ -95,15 +95,19 @@ impl GlobalPoint {
         )
     }
 
-    pub fn neighbors(self) -> Neighbors {
-        Neighbors {
-            center: self,
-            sides: Sides::all(),
+    pub fn to<S>(self, side: S) -> Self
+    where
+        S: Into<Side>,
+    {
+        let side = side.into();
+        match self.ch.to(side, 1) {
+            Ok(ch) => Self::new(ch, self.cl),
+            Err(ch) => Self::new(ch, self.cl.to(side)),
         }
     }
 }
 
-impl TryFrom<(i64, i64, i64)> for GlobalPoint {
+impl TryFrom<(i64, i64, i64)> for Point {
     type Error = Error;
 
     fn try_from((x, y, z): (i64, i64, i64)) -> Result<Self, Self::Error> {
@@ -111,13 +115,13 @@ impl TryFrom<(i64, i64, i64)> for GlobalPoint {
     }
 }
 
-impl From<GlobalPoint> for (i64, i64, i64) {
-    fn from(point: GlobalPoint) -> Self {
+impl From<Point> for (i64, i64, i64) {
+    fn from(point: Point) -> Self {
         point.absolute_point()
     }
 }
 
-impl fmt::Display for GlobalPoint {
+impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (x, y, z) = self.absolute_point();
         write!(
@@ -132,14 +136,14 @@ impl fmt::Display for GlobalPoint {
     }
 }
 
-impl fmt::Debug for GlobalPoint {
+impl fmt::Debug for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (x, y, z) = self.absolute_point();
         write!(f, "{{{}, {}, {}}}", x, y, z)
     }
 }
 
-impl TryFrom<&str> for GlobalPoint {
+impl TryFrom<&str> for Point {
     type Error = ParseError;
 
     fn try_from(src: &str) -> Result<Self, Self::Error> {
@@ -147,7 +151,7 @@ impl TryFrom<&str> for GlobalPoint {
     }
 }
 
-impl FromStr for GlobalPoint {
+impl FromStr for Point {
     type Err = ParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
@@ -177,7 +181,7 @@ impl FromStr for GlobalPoint {
     }
 }
 
-impl ops::AddAssign<ChunkPoint> for GlobalPoint {
+impl ops::AddAssign<ChunkPoint> for Point {
     fn add_assign(&mut self, rhs: ChunkPoint) {
         let ch = self.ch;
         let mut cl = self.cl;
@@ -197,7 +201,7 @@ impl ops::AddAssign<ChunkPoint> for GlobalPoint {
     }
 }
 
-impl ops::Add<ChunkPoint> for GlobalPoint {
+impl ops::Add<ChunkPoint> for Point {
     type Output = Self;
 
     fn add(mut self, rhs: ChunkPoint) -> Self::Output {
@@ -206,7 +210,7 @@ impl ops::Add<ChunkPoint> for GlobalPoint {
     }
 }
 
-impl ops::SubAssign<ChunkPoint> for GlobalPoint {
+impl ops::SubAssign<ChunkPoint> for Point {
     fn sub_assign(&mut self, rhs: ChunkPoint) {
         let ch = self.ch;
         let mut cl = self.cl;
@@ -226,7 +230,7 @@ impl ops::SubAssign<ChunkPoint> for GlobalPoint {
     }
 }
 
-impl ops::Sub<ChunkPoint> for GlobalPoint {
+impl ops::Sub<ChunkPoint> for Point {
     type Output = Self;
 
     fn sub(mut self, rhs: ChunkPoint) -> Self::Output {
@@ -235,13 +239,13 @@ impl ops::Sub<ChunkPoint> for GlobalPoint {
     }
 }
 
-impl ops::AddAssign<ClusterPoint> for GlobalPoint {
+impl ops::AddAssign<ClusterPoint> for Point {
     fn add_assign(&mut self, rhs: ClusterPoint) {
         *self = Self::new(self.ch, self.cl + rhs);
     }
 }
 
-impl ops::Add<ClusterPoint> for GlobalPoint {
+impl ops::Add<ClusterPoint> for Point {
     type Output = Self;
 
     fn add(mut self, rhs: ClusterPoint) -> Self::Output {
@@ -250,13 +254,13 @@ impl ops::Add<ClusterPoint> for GlobalPoint {
     }
 }
 
-impl ops::SubAssign<ClusterPoint> for GlobalPoint {
+impl ops::SubAssign<ClusterPoint> for Point {
     fn sub_assign(&mut self, rhs: ClusterPoint) {
         *self = Self::new(self.ch, self.cl - rhs);
     }
 }
 
-impl ops::Sub<ClusterPoint> for GlobalPoint {
+impl ops::Sub<ClusterPoint> for Point {
     type Output = Self;
 
     fn sub(mut self, rhs: ClusterPoint) -> Self::Output {
@@ -265,14 +269,14 @@ impl ops::Sub<ClusterPoint> for GlobalPoint {
     }
 }
 
-impl ops::AddAssign for GlobalPoint {
+impl ops::AddAssign for Point {
     fn add_assign(&mut self, rhs: Self) {
         *self += rhs.ch;
         *self += rhs.cl;
     }
 }
 
-impl ops::Add for GlobalPoint {
+impl ops::Add for Point {
     type Output = Self;
 
     fn add(mut self, rhs: Self) -> Self::Output {
@@ -281,36 +285,19 @@ impl ops::Add for GlobalPoint {
     }
 }
 
-impl ops::SubAssign for GlobalPoint {
+impl ops::SubAssign for Point {
     fn sub_assign(&mut self, rhs: Self) {
         *self -= rhs.ch;
         *self -= rhs.cl;
     }
 }
 
-impl ops::Sub for GlobalPoint {
+impl ops::Sub for Point {
     type Output = Self;
 
     fn sub(mut self, rhs: Self) -> Self::Output {
         self -= rhs;
         self
-    }
-}
-
-pub struct Neighbors {
-    center: GlobalPoint,
-    sides: Sides,
-}
-
-impl Iterator for Neighbors {
-    type Item = GlobalPoint;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let side = self.sides.next()?;
-        match self.center.ch.to(side, 1) {
-            Ok(ch) => Some(GlobalPoint::new(ch, self.center.cl)),
-            Err(ch) => Some(GlobalPoint::new(ch, self.center.cl.to(side))),
-        }
     }
 }
 
@@ -320,137 +307,135 @@ mod tests {
 
     #[test]
     fn absolute() {
-        let gl = GlobalPoint::from_absolute(0, 0, 0).unwrap();
-        assert_eq!(gl.absolute_point(), (0, 0, 0));
+        let point = Point::from_absolute(0, 0, 0).unwrap();
+        assert_eq!(point.absolute_point(), (0, 0, 0));
 
-        let gl = GlobalPoint::from_absolute(1, -1, 0).unwrap();
-        assert_eq!(gl.absolute_point(), (1, -1, 0));
+        let point = Point::from_absolute(1, -1, 0).unwrap();
+        assert_eq!(point.absolute_point(), (1, -1, 0));
 
-        let gl = GlobalPoint::from_absolute(16, 0, -16).unwrap();
-        assert_eq!(gl.absolute_point(), (16, 0, -16));
+        let point = Point::from_absolute(16, 0, -16).unwrap();
+        assert_eq!(point.absolute_point(), (16, 0, -16));
 
-        let gl = GlobalPoint::from_absolute(-45, 50, 32).unwrap();
-        assert_eq!(gl.absolute_point(), (-45, 50, 32));
+        let point = Point::from_absolute(-45, 50, 32).unwrap();
+        assert_eq!(point.absolute_point(), (-45, 50, 32));
     }
 
     #[test]
     fn to_string() {
-        let point = GlobalPoint::from_absolute(1, -2, -1).unwrap();
+        let point = Point::from_absolute(1, -2, -1).unwrap();
         assert_eq!(point.to_string(), "1 -1 -1");
 
-        let point = GlobalPoint::from_absolute(1, -1, -1).unwrap();
+        let point = Point::from_absolute(1, -1, -1).unwrap();
         assert_eq!(point.to_string(), "1 -0.5 -1");
 
-        let point = GlobalPoint::from_absolute(1, 0, -1).unwrap();
+        let point = Point::from_absolute(1, 0, -1).unwrap();
         assert_eq!(point.to_string(), "1 0 -1");
 
-        let point = GlobalPoint::from_absolute(1, 1, -1).unwrap();
+        let point = Point::from_absolute(1, 1, -1).unwrap();
         assert_eq!(point.to_string(), "1 0.5 -1");
 
-        let point = GlobalPoint::from_absolute(1, 2, -1).unwrap();
+        let point = Point::from_absolute(1, 2, -1).unwrap();
         assert_eq!(point.to_string(), "1 1 -1");
     }
 
     #[test]
     fn parse() {
-        let point: GlobalPoint = "1 -1 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, -2, -1).unwrap());
+        let point: Point = "1 -1 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, -2, -1).unwrap());
 
-        let point: GlobalPoint = "1 -1.0 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, -2, -1).unwrap());
+        let point: Point = "1 -1.0 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, -2, -1).unwrap());
 
-        let point: GlobalPoint = "1 -0.5 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, -1, -1).unwrap());
+        let point: Point = "1 -0.5 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, -1, -1).unwrap());
 
-        let point: GlobalPoint = "1 -0 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, 0, -1).unwrap());
+        let point: Point = "1 -0 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, 0, -1).unwrap());
 
-        let point: GlobalPoint = "1 0 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, 0, -1).unwrap());
+        let point: Point = "1 0 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, 0, -1).unwrap());
 
-        let point: GlobalPoint = "1 0.5 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, 1, -1).unwrap());
+        let point: Point = "1 0.5 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, 1, -1).unwrap());
 
-        let point: GlobalPoint = "1 1 -1".parse().unwrap();
-        assert_eq!(point, GlobalPoint::from_absolute(1, 2, -1).unwrap());
+        let point: Point = "1 1 -1".parse().unwrap();
+        assert_eq!(point, Point::from_absolute(1, 2, -1).unwrap());
     }
 
     #[test]
     fn parse_error() {
-        let err = "".parse::<GlobalPoint>().unwrap_err();
+        let err = "".parse::<Point>().unwrap_err();
         assert_eq!(err, ParseError::X);
 
-        let err = "1".parse::<GlobalPoint>().unwrap_err();
+        let err = "1".parse::<Point>().unwrap_err();
         assert_eq!(err, ParseError::Y);
 
-        let err = "1 1".parse::<GlobalPoint>().unwrap_err();
+        let err = "1 1".parse::<Point>().unwrap_err();
         assert_eq!(err, ParseError::Z);
 
-        let err = "1 1 1 1".parse::<GlobalPoint>().unwrap_err();
+        let err = "1 1 1 1".parse::<Point>().unwrap_err();
         assert_eq!(err, ParseError::TooManyAxes);
     }
 
     #[test]
     fn add_chunk_point() {
-        let gl = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        let point = Point::from_absolute(0, 0, 0).unwrap();
         let ch = ChunkPoint::new(1, 1, 1).unwrap();
-        assert_eq!(gl + ch, GlobalPoint::from_absolute(1, 1, 1).unwrap());
+        assert_eq!(point + ch, Point::from_absolute(1, 1, 1).unwrap());
 
-        let gl = GlobalPoint::from_absolute(1, 1, 1).unwrap();
+        let point = Point::from_absolute(1, 1, 1).unwrap();
         let ch = ChunkPoint::new(15, 31, 15).unwrap();
-        assert_eq!(gl + ch, GlobalPoint::from_absolute(16, 32, 16).unwrap());
+        assert_eq!(point + ch, Point::from_absolute(16, 32, 16).unwrap());
     }
 
     #[test]
     fn sub_chunk_point() {
-        let gl = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        let point = Point::from_absolute(0, 0, 0).unwrap();
         let ch = ChunkPoint::new(1, 1, 1).unwrap();
-        assert_eq!(gl - ch, GlobalPoint::from_absolute(-1, -1, -1).unwrap());
+        assert_eq!(point - ch, Point::from_absolute(-1, -1, -1).unwrap());
     }
 
     #[test]
     fn add_cluster_point() {
-        let gl = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        let point = Point::from_absolute(0, 0, 0).unwrap();
         let cl = ClusterPoint::new(1, 1, 1).unwrap();
-        assert_eq!(gl + cl, GlobalPoint::from_absolute(16, 32, 16).unwrap());
+        assert_eq!(point + cl, Point::from_absolute(16, 32, 16).unwrap());
     }
 
     #[test]
     fn sub_cluster_point() {
-        let gl = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        let point = Point::from_absolute(0, 0, 0).unwrap();
         let cl = ClusterPoint::new(1, 1, 1).unwrap();
-        assert_eq!(gl - cl, GlobalPoint::from_absolute(-16, -32, -16).unwrap());
+        assert_eq!(point - cl, Point::from_absolute(-16, -32, -16).unwrap());
     }
 
     #[test]
     fn add() {
-        let a = GlobalPoint::from_absolute(1, -1, 0).unwrap();
-        let b = GlobalPoint::from_absolute(1, 1, 0).unwrap();
-        assert_eq!(a + b, GlobalPoint::from_absolute(2, 0, 0).unwrap());
+        let a = Point::from_absolute(1, -1, 0).unwrap();
+        let b = Point::from_absolute(1, 1, 0).unwrap();
+        assert_eq!(a + b, Point::from_absolute(2, 0, 0).unwrap());
     }
 
     #[test]
     fn sub() {
-        let a = GlobalPoint::from_absolute(1, -1, 0).unwrap();
-        let b = GlobalPoint::from_absolute(1, 1, 0).unwrap();
-        assert_eq!(a - b, GlobalPoint::from_absolute(0, -2, 0).unwrap());
+        let a = Point::from_absolute(1, -1, 0).unwrap();
+        let b = Point::from_absolute(1, 1, 0).unwrap();
+        assert_eq!(a - b, Point::from_absolute(0, -2, 0).unwrap());
     }
 
     #[test]
-    fn neighbors() {
-        use std::collections::HashSet;
+    fn to() {
+        let point = Point::from_absolute(0, 0, 0).unwrap();
 
-        let neighbors: HashSet<_> = GlobalPoint::from_absolute(0, 0, 0)
-            .unwrap()
-            .neighbors()
-            .into_iter()
-            .collect();
-
-        assert!(neighbors.contains(&GlobalPoint::from_absolute(1, 0, 0).unwrap()));
-        assert!(neighbors.contains(&GlobalPoint::from_absolute(-1, 0, 0).unwrap()));
-        assert!(neighbors.contains(&GlobalPoint::from_absolute(0, 1, 0).unwrap()));
-        assert!(neighbors.contains(&GlobalPoint::from_absolute(0, -1, 0).unwrap()));
-        assert!(neighbors.contains(&GlobalPoint::from_absolute(0, 0, 1).unwrap()));
-        assert!(neighbors.contains(&GlobalPoint::from_absolute(0, 0, -1).unwrap()));
+        for (side, x, y, z) in [
+            (Side::Left, 1, 0, 0),
+            (Side::Right, -1, 0, 0),
+            (Side::Up, 0, 1, 0),
+            (Side::Down, 0, -1, 0),
+            (Side::Forth, 0, 0, 1),
+            (Side::Back, 0, 0, -1),
+        ] {
+            assert_eq!(point.to(side), Point::from_absolute(x, y, z).unwrap());
+        }
     }
 }

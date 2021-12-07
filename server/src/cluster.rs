@@ -1,5 +1,9 @@
 use crate::{layout::*, slab::*, tile::*};
-use core::{map::Map, point::ChunkPoints, prelude::*};
+use core::{
+    map::{Column, Map},
+    point::ChunkPoints,
+    prelude::*,
+};
 use std::{any::Any, cell::RefCell, rc::Rc};
 
 #[derive(Clone)]
@@ -60,22 +64,13 @@ impl AsMut<Chunk<Slab>> for SlabChunk {
 }
 
 pub struct ClusterSlice<'a> {
-    lo: &'a [Slab],
-    hi: &'a [Slab],
+    column: Column<'a, Slab>,
     chunks: (&'a SlabChunk, Option<&'a SlabChunk>),
 }
 
 impl ClusterSlice<'_> {
-    pub const fn len(&self) -> usize {
-        self.lo.len() + self.hi.len()
-    }
-
-    pub const fn is_empty(&self) -> bool {
-        false
-    }
-
     pub fn index(&self) -> (TileIndex, VariantIndex) {
-        match self.lo[0].typed() {
+        match self.column.get(0).typed() {
             Typed::Base(base) => (base.tile(), base.variant()),
             _ => unreachable!(),
         }
@@ -83,14 +78,14 @@ impl ClusterSlice<'_> {
 
     pub fn data(&self, level: u8) -> Data {
         let level = level as usize;
-        let slab = self.get(level);
+        let slab = self.column.get(level);
         match slab.typed() {
             Typed::Empty(_) => unreachable!(),
             Typed::Base(_) => Data::None,
             Typed::Trunk(trunk) => {
                 let data = trunk.data();
                 if trunk.is_obj() {
-                    let chunk = if level < self.lo.len() {
+                    let chunk = if level < self.column.len() {
                         self.chunks.0
                     } else {
                         self.chunks.1.unwrap()
@@ -103,19 +98,11 @@ impl ClusterSlice<'_> {
             }
         }
     }
-
-    fn get(&self, level: usize) -> Slab {
-        *self
-            .lo
-            .get(level)
-            .or_else(|| self.hi.get(level - self.lo.len()))
-            .unwrap()
-    }
 }
 
 pub struct Placed {
     pub variant: VariantIndex,
-    pub height: u8,
+    pub height: Height,
 }
 
 pub struct Cluster {
@@ -139,11 +126,11 @@ impl Cluster {
         })
     }
 
-    pub fn get(&self, mut gl: GlobalPoint) -> Option<(ClusterSlice, u8)> {
-        let ch = gl.chunk_point();
-        let cl = gl.cluster_point();
+    pub fn get(&self, mut pn: Point) -> Option<(ClusterSlice, u8)> {
+        let ch = pn.chunk_point();
+        let cl = pn.cluster_point();
         let chunks;
-        let (slab, level) = match self.map.get(gl)?.typed() {
+        let (slab, level) = match self.map.get(pn)?.typed() {
             Typed::Empty(_) => return None,
             Typed::Base(slab) => {
                 chunks = (self.map.chunk(cl)?, None);
@@ -152,51 +139,51 @@ impl Cluster {
             Typed::Trunk(slab) => {
                 let level = slab.level();
                 let dw = cl.to(Side::Down);
-                gl = match ch.to(Side::Down, level) {
-                    Ok(ch) => GlobalPoint::new(ch, cl),
-                    Err(ch) => GlobalPoint::new(ch, dw),
+                pn = match ch.to(Side::Down, level) {
+                    Ok(ch) => Point::new(ch, cl),
+                    Err(ch) => Point::new(ch, dw),
                 };
-                let cl = gl.cluster_point();
+                let cl = pn.cluster_point();
                 chunks = (self.map.chunk(cl)?, self.map.chunk(dw));
 
-                match self.map.get(gl)?.typed() {
+                match self.map.get(pn)?.typed() {
                     Typed::Base(slab) => (slab, level),
                     _ => unreachable!(),
                 }
             }
         };
 
-        let (lo, hi) = self.map.slice(gl, slab.height())?;
-        let slice = ClusterSlice { lo, hi, chunks };
-        debug_assert!((0..slice.len()).all(|l| !slice.get(l).is_empty()));
+        let column = self.map.column(pn, slab.height())?;
+        let slice = ClusterSlice { column, chunks };
+        debug_assert!(!slice.column.iter().copied().any(Slab::is_empty));
         Some((slice, level))
     }
 
-    pub fn is_empty(&self, gl: GlobalPoint, height: u8) -> bool {
-        match self.map.slice(gl, height) {
-            Some((lo, hi)) => lo.iter().chain(hi.iter()).copied().all(Slab::is_empty),
+    pub fn is_empty(&self, pn: Point, height: Height) -> bool {
+        match self.map.column(pn, height) {
+            Some(column) => column.iter().copied().all(Slab::is_empty),
             None => true,
         }
     }
 
-    pub fn place(&mut self, gl: GlobalPoint, tile_idx: TileIndex) -> Option<Placed> {
+    pub fn place(&mut self, pn: Point, tile_idx: TileIndex) -> Option<Placed> {
         let tile_set = Rc::clone(&self.tile_set);
         let tile = tile_set.get(tile_idx).unwrap();
-        let height = tile.height();
-        if !self.is_empty(gl, height) {
+        let height = Height::new(tile.height()).unwrap();
+        if !self.is_empty(pn, height) {
             return None;
         }
 
-        let placement = tile.place(self, gl);
-        assert_eq!(height, placement.data.len() as u8 + 1);
+        let placement = tile.place(self, pn);
+        assert_eq!(height.get(), placement.data.len() as u8 + 1);
         let layout = Layout {
             tile: tile_idx,
             variant: placement.variant,
             data: placement.data,
         };
 
-        self.map.slice_mut(gl, height);
-        let cl = gl.cluster_point();
+        self.map.column_mut(pn, height);
+        let cl = pn.cluster_point();
         let storages = (
             self.map.chunk(cl).unwrap().storage.clone(),
             self.map
@@ -204,24 +191,19 @@ impl Cluster {
                 .map(|chunk| chunk.storage.clone()),
         );
 
-        let (lo, hi) = self.map.slice_mut(gl, height);
-        lo[0] = layout.base().into();
+        let mut column = self.map.column_mut(pn, height);
+        *column.get_mut(0) = layout.base().into();
         for (i, (mut trunk, obj)) in layout.trunks().enumerate() {
             let i = i + 1;
-            if i < lo.len() {
-                lo[i] = trunk.into();
-
-                if let Some(obj) = obj {
+            if let Some(obj) = obj {
+                if i < column.0.len() {
                     trunk.set_data(storages.0.add(obj))
-                }
-            } else {
-                let i = i - lo.len();
-                hi[i] = trunk.into();
-
-                if let Some(obj) = obj {
+                } else {
                     trunk.set_data(storages.1.as_ref().unwrap().add(obj))
                 }
             }
+
+            *column.get_mut(i) = trunk.into();
         }
 
         Some(Placed {
@@ -238,16 +220,16 @@ pub struct Tiles<'a> {
 }
 
 impl<'a> Iterator for Tiles<'a> {
-    type Item = (ClusterSlice<'a>, GlobalPoint);
+    type Item = (ClusterSlice<'a>, Point);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let ch = self.points.next()?;
-            let gl = GlobalPoint::new(ch, self.cl);
+            let gl = Point::new(ch, self.cl);
             match self.cluster.get(gl) {
                 Some((slice, level)) => {
                     debug_assert_eq!(level, 0);
-                    for _ in 0..slice.lo.len() - 1 {
+                    for _ in 0..slice.column.0.len() - 1 {
                         self.points.next();
                     }
 
@@ -276,7 +258,7 @@ mod tests {
             unreachable!()
         }
 
-        fn place(&self, _: &mut Cluster, _: GlobalPoint) -> Placement {
+        fn place(&self, _: &mut Cluster, _: Point) -> Placement {
             Placement {
                 variant: VariantIndex(0),
                 data: &self.data,
@@ -302,19 +284,19 @@ mod tests {
     #[test]
     fn place() {
         let (mut cluster, index) = cluster();
-        let point = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        let point = Point::from_absolute(0, 0, 0).unwrap();
         cluster.place(point, index);
 
         let (slice, level) = cluster.get(point).unwrap();
-        assert_eq!(slice.len(), 4);
+        assert_eq!(slice.column.len(), 4);
         assert_eq!(slice.index(), (index, VariantIndex(0)));
         assert_eq!(level, 0);
 
-        let point = GlobalPoint::from_absolute(0, 31, 0).unwrap();
+        let point = Point::from_absolute(0, 31, 0).unwrap();
         cluster.place(point, index);
 
         let (slice, level) = cluster.get(point).unwrap();
-        assert_eq!(slice.len(), 4);
+        assert_eq!(slice.column.len(), 4);
         assert_eq!(slice.index(), (index, VariantIndex(0)));
         assert_eq!(level, 0);
     }
@@ -322,30 +304,28 @@ mod tests {
     #[test]
     fn get() {
         let (mut cluster, index) = cluster();
-        cluster.place(GlobalPoint::from_absolute(0, 0, 0).unwrap(), index);
+        cluster.place(Point::from_absolute(0, 0, 0).unwrap(), index);
 
         for i in 0..4 {
-            let (slice, level) = cluster
-                .get(GlobalPoint::from_absolute(0, i, 0).unwrap())
-                .unwrap();
-            assert_eq!(slice.len(), 4);
+            let (slice, level) = cluster.get(Point::from_absolute(0, i, 0).unwrap()).unwrap();
+            assert_eq!(slice.column.len(), 4);
             assert_eq!(slice.index(), (index, VariantIndex(0)));
             assert_eq!(level, i as u8);
         }
 
         assert!(cluster
-            .get(GlobalPoint::from_absolute(1, 0, 0).unwrap())
+            .get(Point::from_absolute(1, 0, 0).unwrap())
             .is_none());
     }
 
     #[test]
     fn data() {
         let (mut cluster, index) = cluster();
-        let point = GlobalPoint::from_absolute(0, 0, 0).unwrap();
+        let point = Point::from_absolute(0, 0, 0).unwrap();
         cluster.place(point, index);
 
         let (slice, _) = cluster.get(point).unwrap();
-        assert_eq!(slice.len(), 4);
+        assert_eq!(slice.column.len(), 4);
         assert!(matches!(slice.data(0), Data::None));
         assert_eq!(slice.data(1).as_num().get(), 0);
         assert_eq!(slice.data(2).as_num().get(), 2);
