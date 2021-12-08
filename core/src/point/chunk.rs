@@ -3,85 +3,121 @@ use crate::{
     point::Error,
     side::Side,
 };
+use serde::{Deserialize, Serialize};
 use shr::cgm::*;
 use std::fmt;
 
-const CHUNK_SIDE_MAX: u8 = SIDE as u8 - 1;
-const CHUNK_HEIGHT_MAX: u8 = HEIGHT as u8 - 1;
-
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-pub struct ChunkPoint(u16);
+#[derive(Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(try_from = "(u8, u8, u8)", into = "(u8, u8, u8)")]
+pub struct ChunkPoint {
+    x: u8,
+    y: u8,
+    z: u8,
+}
 
 impl ChunkPoint {
     pub const fn new(x: u8, y: u8, z: u8) -> Result<Self, Error> {
-        let (x, y, z) = match (x, y, z) {
-            (0..=CHUNK_SIDE_MAX, 0..=CHUNK_HEIGHT_MAX, 0..=CHUNK_SIDE_MAX) => (x, y, z),
-            _ => return Err(Error),
-        };
-
-        Ok(unsafe { Self::new_unchecked(x, y, z) })
+        if x < SIDE as u8 && y < HEIGHT as u8 && z < SIDE as u8 {
+            Ok(unsafe { Self::new_unchecked(x, y, z) })
+        } else {
+            Err(Error)
+        }
     }
 
     const unsafe fn new_unchecked(x: u8, y: u8, z: u8) -> Self {
-        debug_assert!(x <= CHUNK_SIDE_MAX);
-        debug_assert!(y <= CHUNK_HEIGHT_MAX);
-        debug_assert!(z <= CHUNK_SIDE_MAX);
-        Self(x as u16 | (y as u16) << 4 | (z as u16) << 9)
+        debug_assert!(x < SIDE as u8);
+        debug_assert!(y < HEIGHT as u8);
+        debug_assert!(z < SIDE as u8);
+        Self { x, y, z }
     }
 
     pub const fn axes(self) -> (u8, u8, u8) {
-        (
-            (self.0 & 0b1111) as u8,
-            (self.0 >> 4 & 0b11111) as u8,
-            (self.0 >> 9 & 0b1111) as u8,
-        )
+        (self.x, self.y, self.z)
     }
 
     pub const fn x(self) -> u8 {
-        self.axes().0
+        self.x
     }
 
     pub const fn y(self) -> u8 {
-        self.axes().1
+        self.y
     }
 
     pub const fn z(self) -> u8 {
-        self.axes().2
+        self.z
     }
 
     /// Returns the point moved to `side` by `n`.
     /// If `Ok` returns, then the point is in this chunk,
     /// `Err` in the neighboring one.
+    ///
+    /// If `n >= SIDE` for Left, Right, Forth, Back side
+    /// or `n >= HEIGHT` for Up, Down side then the function panics.
     pub fn to(self, side: Side, n: u8) -> Result<Self, Self> {
-        let (x, y, z) = self.axes();
-        match side {
-            Side::Left => Self::new(x.saturating_add(n), y, z)
-                .map_err(|_| Self::new(x.saturating_add(n) - SIDE as u8, y, z).unwrap()),
+        let Self { x, y, z } = self;
+        let res = match side {
+            Side::Left => {
+                assert!(n < SIDE as u8);
+
+                let v = x + n;
+                if v < SIDE as u8 {
+                    Ok((v, y, z))
+                } else {
+                    Err((v - SIDE as u8, y, z))
+                }
+            }
             Side::Right => {
-                if x >= n {
-                    Ok(Self::new(x - n, y, z).unwrap())
+                assert!(n < SIDE as u8);
+
+                if n <= x {
+                    Ok((x - n, y, z))
                 } else {
-                    Err(Self::new((SIDE as u8).wrapping_sub(n) + x, y, z).unwrap())
+                    Err(((SIDE as u8) - n + x, y, z))
                 }
             }
-            Side::Up => Self::new(x, y.saturating_add(n), z)
-                .map_err(|_| Self::new(x, y.saturating_add(n) - HEIGHT as u8, z).unwrap()),
+            Side::Up => {
+                assert!(n < HEIGHT as u8);
+
+                let v = y + n;
+                if v < HEIGHT as u8 {
+                    Ok((x, v, z))
+                } else {
+                    Err((x, v - HEIGHT as u8, z))
+                }
+            }
             Side::Down => {
-                if y >= n {
-                    Ok(Self::new(x, y - n, z).unwrap())
+                assert!(n < HEIGHT as u8);
+
+                if n <= y {
+                    Ok((x, y - n, z))
                 } else {
-                    Err(Self::new(x, (HEIGHT as u8).wrapping_sub(n) + y, z).unwrap())
+                    Err((x, (HEIGHT as u8) - n + y, z))
                 }
             }
-            Side::Forth => Self::new(x, y, z.saturating_add(n))
-                .map_err(|_| Self::new(x, y, z.saturating_add(n) - SIDE as u8).unwrap()),
+            Side::Forth => {
+                assert!(n < SIDE as u8);
+
+                let v = z + n;
+                if v < SIDE as u8 {
+                    Ok((x, y, v))
+                } else {
+                    Err((x, y, v - SIDE as u8))
+                }
+            }
             Side::Back => {
-                if z >= n {
-                    Ok(Self::new(x, y, z - n).unwrap())
+                assert!(n < SIDE as u8);
+
+                if n <= z {
+                    Ok((x, y, z - n))
                 } else {
-                    Err(Self::new(x, y, (SIDE as u8).wrapping_sub(n) + z).unwrap())
+                    Err((x, y, (SIDE as u8) - n + z))
                 }
             }
+        };
+
+        unsafe {
+            res.map(|(x, y, z)| Self::new_unchecked(x, y, z))
+                .map_err(|(x, y, z)| Self::new_unchecked(x, y, z))
         }
     }
 
@@ -135,6 +171,14 @@ impl TryFrom<UVec3> for ChunkPoint {
     }
 }
 
+impl TryFrom<(u8, u8, u8)> for ChunkPoint {
+    type Error = Error;
+
+    fn try_from((x, y, z): (u8, u8, u8)) -> Result<Self, Self::Error> {
+        Self::new(x, y, z)
+    }
+}
+
 impl From<ChunkPoint> for (u8, u8, u8) {
     fn from(point: ChunkPoint) -> Self {
         point.axes()
@@ -151,7 +195,7 @@ impl From<ChunkPoint> for UVec3 {
 impl From<ChunkPoint> for Vec3 {
     fn from(point: ChunkPoint) -> Self {
         let (x, y, z) = point.axes();
-        Self::new(x as f32, y as f32, z as f32)
+        Self::new(x as f32, (y as f32) * 0.5, z as f32)
     }
 }
 

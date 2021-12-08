@@ -1,11 +1,15 @@
 use crate::{
     atlas::Atlas,
     camera::TpCamera,
+    draw::{cell::Cell, path::Path},
     land::{variant::VariantSet, ClusterView, Factory},
     loader::Loader,
     Render, Texture, Vert,
 };
-use core::prelude::*;
+use core::{
+    path::{PathFinder, Walker},
+    prelude::*,
+};
 use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
@@ -49,6 +53,8 @@ pub enum Control {
 
 pub struct Game {
     data: Data,
+    cells: Vec<Cell>,
+    pathes: Vec<Path>,
     cam: TpCamera,
     aspect: f32,
 }
@@ -77,9 +83,9 @@ impl Game {
             loader.load_sprite("tiles/default").unwrap();
 
             for info in tiles.iter() {
-                for (name, variant) in info.variants() {
-                    let to_variant = loader.load_variant(name).unwrap();
-                    to_variants.push(((info.index(), *variant), to_variant));
+                for variant in info.variants() {
+                    let to_variant = loader.load_variant(variant.name()).unwrap();
+                    to_variants.push(((info.index(), variant.index()), to_variant));
                 }
             }
 
@@ -111,6 +117,7 @@ impl Game {
 
         let mut view = ClusterView::new(variant_set, polygons);
         for (name, (x, y, z), variant) in [
+            ("dirt", (0, -2, 0), 0),
             ("dirt", (0, 0, 0), 0),
             ("grass", (0, 1, 0), 0),
             ("dirt", (1, 0, 0), 0),
@@ -122,10 +129,20 @@ impl Game {
             ("stone", (0, 0, 1), 0),
             ("rocks", (0, 2, 1), 0),
             ("stone", (1, 0, 1), 0),
-            ("steps", (0, 0, 2), 0),
-            ("steps", (1, 0, 2), 1),
-            ("steps", (2, 0, 2), 2),
-            ("steps", (3, 0, 2), 3),
+            ("stone", (0, 0, 2), 0),
+            ("stone", (1, 0, 2), 0),
+            ("stone", (2, 0, 2), 0),
+            ("stone", (3, 0, 2), 0),
+            ("stone", (3, 1, 1), 0),
+            ("stone", (3, 2, 0), 0),
+            ("stone", (4, 3, 0), 0),
+            ("stone", (5, 4, 0), 0),
+            ("dirt", (5, 5, 1), 0),
+            ("dirt", (5, 5, 2), 0),
+            ("dirt", (6, 5, 1), 0),
+            ("dirt", (6, 5, 2), 0),
+            ("dirt", (6, 6, 1), 4),
+            ("dirt", (6, 6, 2), 4),
             ("dirt", (0, 0, 3), 0),
             ("dirt", (1, 0, 3), 0),
             ("dirt", (0, 0, 4), 0),
@@ -137,6 +154,7 @@ impl Game {
             ("dirt", (1, 0, 5), 0),
             ("dirt", (2, 0, 5), 0),
             ("dirt", (1, 1, 5), 0),
+            ("dirt", (1, 3, 5), 0),
             ("dirt", (2, 1, 5), 0),
             ("dirt", (2, 2, 5), 0),
             ("grass", (2, 3, 5), 0),
@@ -145,6 +163,10 @@ impl Game {
             ("bricks", (2, 0, 3), 0),
             ("bricks", (3, 0, 3), 0),
             ("bricks", (4, 0, 3), 0),
+            ("bricks", (4, 1, 4), 0),
+            ("bricks", (5, 2, 4), 0),
+            ("bricks", (5, 0, 4), 0),
+            ("bricks", (6, 0, 4), 0),
             ("box", (3, 0, 4), 0),
             ("box", (3, 2, 4), 0),
             ("box", (3, 1, 5), 0),
@@ -175,20 +197,46 @@ impl Game {
             );
         }
 
+        let mut pf = PathFinder::new();
+        pf.find(
+            Point::from_absolute(3, 2, 3).unwrap(),
+            9,
+            Walker::new(2, 2, 2, true, true).unwrap(),
+            &view,
+        );
+
+        let path = pf.path();
+        let cells = path.points().map(|pn| Cell(pn.into())).collect();
+
+        let pathes = path
+            .points()
+            .map(|pn| Path(path.to(pn).map(|(_, pn)| pn.into()).collect()))
+            .collect();
+
         Self {
             data: Data {
                 mesh: view.mesh(ren, Vec3::zero(), ClusterPoint::new(0, 0, 0).unwrap()),
                 map,
             },
+            cells,
+            pathes,
             cam: TpCamera::new(1., Pnt3::new(3., 0., 3.)),
             aspect: 1.,
         }
     }
 
     pub fn draw(&mut self, ren: &mut Render, _: f32) {
+        const DRAW_CELLS: bool = false;
+
         ren.set_proj(self.cam.proj(self.aspect));
         ren.set_view(self.cam.view());
-        ren.draw(Vec3::new(0.3, 0.6, 0.8), [&self.data as &dyn Pipe])
+
+        let cells = DRAW_CELLS.then(|| &self.cells[..]);
+        let pathes = &self.pathes[..];
+        ren.draw(
+            Vec3::new(0.3, 0.6, 0.8),
+            [&self.data as &dyn Pipe, &cells, &pathes],
+        )
     }
 
     pub fn resize(&mut self, (width, height): (u32, u32)) {

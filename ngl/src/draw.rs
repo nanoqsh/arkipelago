@@ -10,6 +10,28 @@ pub trait Pipe {
     fn pipe<'a>(&'a self, pipeline: &mut Pipeline<'a>);
 }
 
+impl<T: Pipe + ?Sized> Pipe for &T {
+    fn pipe<'a>(&'a self, pipeline: &mut Pipeline<'a>) {
+        (*self).pipe(pipeline)
+    }
+}
+
+impl<T: Pipe> Pipe for [T] {
+    fn pipe<'a>(&'a self, pipeline: &mut Pipeline<'a>) {
+        for pipe in self {
+            pipe.pipe(pipeline)
+        }
+    }
+}
+
+impl<T: Pipe> Pipe for Option<T> {
+    fn pipe<'a>(&'a self, pipeline: &mut Pipeline<'a>) {
+        if let Some(pipe) = self {
+            pipe.pipe(pipeline)
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Pipeline<'a> {
     solid: Vec<&'a dyn Draw<Solid>>,

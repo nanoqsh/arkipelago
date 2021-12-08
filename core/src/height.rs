@@ -1,17 +1,17 @@
 use crate::chunk;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fmt, ops};
 
-#[derive(Copy, Clone, Deserialize)]
-#[serde(try_from = "u8")]
+#[derive(Copy, Clone, Deserialize, Eq, PartialEq, PartialOrd, Ord, Serialize)]
+#[serde(try_from = "u8", into = "u8")]
 pub struct Height(u8);
 
 impl Height {
-    pub const fn new(height: u8) -> Option<Self> {
-        const HEIGHT: u8 = chunk::HEIGHT as u8;
+    pub const HEIGHT: u8 = chunk::HEIGHT as u8;
 
+    pub const fn new(height: u8) -> Option<Self> {
         match height {
-            1..=HEIGHT => Some(Self(height)),
+            1..=Self::HEIGHT => Some(Self(height)),
             _ => None,
         }
     }
@@ -26,6 +26,12 @@ impl TryFrom<u8> for Height {
 
     fn try_from(val: u8) -> Result<Self, Self::Error> {
         Self::new(val).ok_or(val)
+    }
+}
+
+impl From<Height> for u8 {
+    fn from(height: Height) -> Self {
+        height.0
     }
 }
 

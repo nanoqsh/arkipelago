@@ -1,8 +1,11 @@
 use crate::{
     chunk::{HEIGHT, SIDE},
+    height::Height,
     point::*,
     side::Side,
 };
+use serde::{Deserialize, Serialize};
+use shr::cgm::Vec3;
 use std::{error, fmt, num::ParseIntError, ops, str::FromStr};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -42,7 +45,7 @@ impl fmt::Display for ParseError {
 
 impl error::Error for ParseError {}
 
-#[derive(Copy, Clone, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct Point {
     ch: ChunkPoint,
     cl: ClusterPoint,
@@ -118,6 +121,13 @@ impl TryFrom<(i64, i64, i64)> for Point {
 impl From<Point> for (i64, i64, i64) {
     fn from(point: Point) -> Self {
         point.absolute_point()
+    }
+}
+
+impl From<Point> for Vec3 {
+    fn from(point: Point) -> Self {
+        let (x, y, z) = point.absolute_point();
+        Self::new(x as f32, (y as f32) * 0.5, z as f32)
     }
 }
 
@@ -301,6 +311,42 @@ impl ops::Sub for Point {
     }
 }
 
+impl ops::AddAssign<Height> for Point {
+    fn add_assign(&mut self, rhs: Height) {
+        *self = match self.ch.to(Side::Up, rhs.get()) {
+            Ok(ch) => Self::new(ch, self.cl),
+            Err(ch) => Self::new(ch, self.cl.to(Side::Up)),
+        };
+    }
+}
+
+impl ops::Add<Height> for Point {
+    type Output = Self;
+
+    fn add(mut self, rhs: Height) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl ops::SubAssign<Height> for Point {
+    fn sub_assign(&mut self, rhs: Height) {
+        *self = match self.ch.to(Side::Down, rhs.get()) {
+            Ok(ch) => Self::new(ch, self.cl),
+            Err(ch) => Self::new(ch, self.cl.to(Side::Down)),
+        };
+    }
+}
+
+impl ops::Sub<Height> for Point {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Height) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -318,6 +364,22 @@ mod tests {
 
         let point = Point::from_absolute(-45, 50, 32).unwrap();
         assert_eq!(point.absolute_point(), (-45, 50, 32));
+    }
+
+    #[test]
+    fn to() {
+        let point = Point::from_absolute(0, 0, 0).unwrap();
+
+        for (side, x, y, z) in [
+            (Side::Left, 1, 0, 0),
+            (Side::Right, -1, 0, 0),
+            (Side::Up, 0, 1, 0),
+            (Side::Down, 0, -1, 0),
+            (Side::Forth, 0, 0, 1),
+            (Side::Back, 0, 0, -1),
+        ] {
+            assert_eq!(point.to(side), Point::from_absolute(x, y, z).unwrap());
+        }
     }
 
     #[test]
@@ -424,18 +486,16 @@ mod tests {
     }
 
     #[test]
-    fn to() {
-        let point = Point::from_absolute(0, 0, 0).unwrap();
+    fn add_height() {
+        let point = Point::from_absolute(0, -1, 0).unwrap();
+        let height = Height::new(12).unwrap();
+        assert_eq!(point + height, Point::from_absolute(0, 11, 0).unwrap());
+    }
 
-        for (side, x, y, z) in [
-            (Side::Left, 1, 0, 0),
-            (Side::Right, -1, 0, 0),
-            (Side::Up, 0, 1, 0),
-            (Side::Down, 0, -1, 0),
-            (Side::Forth, 0, 0, 1),
-            (Side::Back, 0, 0, -1),
-        ] {
-            assert_eq!(point.to(side), Point::from_absolute(x, y, z).unwrap());
-        }
+    #[test]
+    fn sub_height() {
+        let point = Point::from_absolute(0, 1, 0).unwrap();
+        let height = Height::new(12).unwrap();
+        assert_eq!(point - height, Point::from_absolute(0, -11, 0).unwrap());
     }
 }

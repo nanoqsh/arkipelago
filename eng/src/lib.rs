@@ -1,6 +1,7 @@
 mod atlas;
 #[allow(dead_code)]
 mod camera;
+mod draw;
 mod game;
 mod land;
 mod loader;

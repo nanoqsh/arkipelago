@@ -1,11 +1,13 @@
-use crate::rotation::Rotation;
+use crate::{height::Height, rotation::Rotation};
 
-pub(crate) enum Action {
+#[derive(Copy, Clone)]
+pub enum Action {
+    Stay,
     StepStraight { rotation: Rotation },
     StepUp { rotation: Rotation, ascent: bool },
     StepDown { rotation: Rotation, ascent: bool },
-    JumpUp { rotation: Rotation, height: u8 },
-    JumpDown { rotation: Rotation, height: u8 },
+    JumpUp { rotation: Rotation, height: Height },
+    JumpDown { rotation: Rotation, height: Height },
     JumpOver { rotation: Rotation },
     LiftUp,
     LiftDown,

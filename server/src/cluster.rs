@@ -193,17 +193,19 @@ impl Cluster {
 
         let mut column = self.map.column_mut(pn, height);
         *column.get_mut(0) = layout.base().into();
-        for (i, (mut trunk, obj)) in layout.trunks().enumerate() {
-            let i = i + 1;
+        let len = column.0.len();
+        for ((i, slab), (mut trunk, obj)) in
+            column.iter_mut().enumerate().skip(1).zip(layout.trunks())
+        {
             if let Some(obj) = obj {
-                if i < column.0.len() {
-                    trunk.set_data(storages.0.add(obj))
+                trunk.set_data(if i < len {
+                    storages.0.add(obj)
                 } else {
-                    trunk.set_data(storages.1.as_ref().unwrap().add(obj))
-                }
+                    storages.1.as_ref().unwrap().add(obj)
+                })
             }
 
-            *column.get_mut(i) = trunk.into();
+            *slab = trunk.into();
         }
 
         Some(Placed {

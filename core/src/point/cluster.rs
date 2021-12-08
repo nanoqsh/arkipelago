@@ -1,8 +1,10 @@
 use crate::{point::Error, side::Side};
+use serde::{Deserialize, Serialize};
 use shr::cgm::*;
 use std::{fmt, ops};
 
-#[derive(Copy, Clone, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(try_from = "(i32, i32, i32)", into = "(i32, i32, i32)")]
 pub struct ClusterPoint {
     x: i32,
     y: i32,
@@ -85,6 +87,14 @@ impl TryFrom<IVec3> for ClusterPoint {
 
     fn try_from(vec: IVec3) -> Result<Self, Self::Error> {
         let (x, y, z) = vec.into();
+        Self::new(x, y, z)
+    }
+}
+
+impl TryFrom<(i32, i32, i32)> for ClusterPoint {
+    type Error = Error;
+
+    fn try_from((x, y, z): (i32, i32, i32)) -> Result<Self, Self::Error> {
         Self::new(x, y, z)
     }
 }

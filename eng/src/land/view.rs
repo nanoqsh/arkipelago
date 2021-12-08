@@ -6,7 +6,11 @@ use crate::{
     },
     IndexedMesh, Render,
 };
-use core::{map::Map, prelude::*};
+use core::{
+    map::{Column, Map},
+    path::{Pass, Space},
+    prelude::*,
+};
 use shr::cgm::Vec3;
 
 #[derive(Copy, Clone)]
@@ -19,6 +23,7 @@ enum Slab {
 struct Data {
     keys: Chunk<Slab>,
     connections: Chunk<Connections>,
+    passes: Chunk<Pass>,
 }
 
 impl Data {
@@ -32,6 +37,7 @@ impl Default for Data {
         Self {
             keys: Chunk::filled(Slab::Empty),
             connections: Chunk::filled(Connections::new()),
+            passes: Chunk::filled(Pass::empty()),
         }
     }
 }
@@ -66,6 +72,18 @@ impl AsMut<Chunk<Connections>> for Data {
     }
 }
 
+impl AsRef<Chunk<Pass>> for Data {
+    fn as_ref(&self) -> &Chunk<Pass> {
+        &self.passes
+    }
+}
+
+impl AsMut<Chunk<Pass>> for Data {
+    fn as_mut(&mut self) -> &mut Chunk<Pass> {
+        &mut self.passes
+    }
+}
+
 pub(crate) struct ClusterView {
     map: Map<Data>,
     variant_set: VariantSet,
@@ -92,6 +110,12 @@ impl ClusterView {
             *slab = Slab::Trunk(i as u8)
         }
 
+        let variant = tile.variant(variant);
+        let mut column = self.map.column_mut(pn, height);
+        for (dst, src) in column.iter_mut().zip(variant.passes()) {
+            *dst = *src;
+        }
+
         let variant = self.variant_set.get(key);
         let mut column = self.map.column_mut(pn, height);
         for (dst, src) in column.iter_mut().zip(variant.connections()) {
@@ -108,12 +132,7 @@ impl ClusterView {
                 _ => continue,
             };
 
-            let local_offset = {
-                let mut v: Vec3 = ch.into();
-                v.y *= 0.5;
-                v
-            };
-
+            let local_offset: Vec3 = ch.into();
             let variant = self.variant_set.get(key);
             let variant_height = variant.height();
             let connections = variant.connections();
@@ -239,5 +258,20 @@ impl ClusterView {
         let mesh = builder.mesh(ren);
         builder.clear();
         mesh
+    }
+}
+
+impl Space for ClusterView {
+    fn get(&self, pn: Point) -> Pass {
+        self.map.get(pn).copied().unwrap_or_else(Pass::empty)
+    }
+
+    fn column(&self, pn: Point, height: Height) -> Column<Pass> {
+        const HEIGHT: usize = Height::HEIGHT as usize;
+        const EMPTY: [Pass; HEIGHT] = [Pass::empty(); HEIGHT];
+
+        self.map
+            .column(pn, height)
+            .unwrap_or_else(|| Column(&EMPTY[..height.get() as usize], &[]))
     }
 }

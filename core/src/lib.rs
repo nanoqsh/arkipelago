@@ -2,7 +2,7 @@ mod chunk;
 mod height;
 pub mod map;
 pub mod net;
-mod path;
+pub mod path;
 pub mod point;
 pub mod rotation;
 pub mod side;
