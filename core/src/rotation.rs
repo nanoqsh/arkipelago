@@ -90,10 +90,10 @@ impl Rotation {
 impl From<Rotation> for Side {
     fn from(rotation: Rotation) -> Self {
         match rotation {
-            Rotation::Q0 => Side::Forth,
-            Rotation::Q1 => Side::Left,
-            Rotation::Q2 => Side::Back,
-            Rotation::Q3 => Side::Right,
+            Rotation::Q0 => Self::Forth,
+            Rotation::Q1 => Self::Left,
+            Rotation::Q2 => Self::Back,
+            Rotation::Q3 => Self::Right,
         }
     }
 }

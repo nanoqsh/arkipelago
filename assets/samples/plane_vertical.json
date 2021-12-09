@@ -1,6 +1,6 @@
 {
     "mesh": {
-        "name": "grass",
+        "name": "plane_vertical",
         "height": 2
     },
     "overlay": [

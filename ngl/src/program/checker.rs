@@ -25,7 +25,7 @@ impl ProgramChecker {
     }
 
     #[cfg(not(debug_assertions))]
-    pub fn check(&self, program: NativeProgram) -> bool {
+    pub fn check(&self, _: NativeProgram) -> bool {
         unreachable!()
     }
 }

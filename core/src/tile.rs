@@ -192,6 +192,28 @@ impl TileList {
                 ),
             ],
         );
+        list.add(
+            "ladder",
+            4,
+            [
+                (
+                    "ladder_q0",
+                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
+                ),
+                (
+                    "ladder_q1",
+                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
+                ),
+                (
+                    "ladder_q2",
+                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
+                ),
+                (
+                    "ladder_q3",
+                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
+                ),
+            ],
+        );
         list
     }
 

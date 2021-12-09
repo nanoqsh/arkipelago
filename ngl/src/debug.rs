@@ -14,7 +14,7 @@ pub(crate) enum GlError {
 }
 
 impl GlError {
-    fn from_error(code: u32) -> GlError {
+    fn from_error(code: u32) -> Self {
         match code {
             glow::INVALID_ENUM => Self::InvalidEnum,
             glow::INVALID_VALUE => Self::InvalidValue,

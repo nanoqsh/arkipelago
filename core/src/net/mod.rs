@@ -54,7 +54,7 @@ impl Unpacked {
             return Err(Error::LimitReached);
         }
 
-        Ok(Unpacked(vec![0; len as usize]))
+        Ok(Self(vec![0; len as usize]))
     }
 
     pub fn bytes(&mut self) -> &mut [u8] {

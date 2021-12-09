@@ -55,7 +55,7 @@ impl TryFrom<(f32, f32)> for Point {
         if x.is_nan() || y.is_nan() {
             Err(Error::Nan)
         } else {
-            Ok(Point(x, y))
+            Ok(Self(x, y))
         }
     }
 }

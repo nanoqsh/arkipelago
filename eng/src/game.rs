@@ -7,7 +7,7 @@ use crate::{
     Render, Texture, Vert,
 };
 use core::{
-    path::{PathFinder, Walker},
+    path::{PathFinder, Position, Walker},
     prelude::*,
 };
 use image::DynamicImage;
@@ -17,7 +17,7 @@ use ngl::{
     Draw, Pipe, Pipeline,
 };
 use shr::cgm::*;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, time::Instant};
 
 struct Data {
     pub mesh: Indexed<Vert>,
@@ -136,13 +136,11 @@ impl Game {
             ("stone", (3, 1, 1), 0),
             ("stone", (3, 2, 0), 0),
             ("stone", (4, 3, 0), 0),
-            ("stone", (5, 4, 0), 0),
-            ("dirt", (5, 5, 1), 0),
+            ("dirt", (5, 5, 0), 0),
+            ("dirt", (6, 5, 0), 2),
+            ("ladder", (5, 2, 3), 0),
             ("dirt", (5, 5, 2), 0),
-            ("dirt", (6, 5, 1), 0),
             ("dirt", (6, 5, 2), 0),
-            ("dirt", (6, 6, 1), 4),
-            ("dirt", (6, 6, 2), 4),
             ("dirt", (0, 0, 3), 0),
             ("dirt", (1, 0, 3), 0),
             ("dirt", (0, 0, 4), 0),
@@ -157,6 +155,8 @@ impl Game {
             ("dirt", (1, 3, 5), 0),
             ("dirt", (2, 1, 5), 0),
             ("dirt", (2, 2, 5), 0),
+            ("bricks", (1, 2, 6), 0),
+            ("bricks", (1, 4, 6), 0),
             ("grass", (2, 3, 5), 0),
             ("dirt", (0, 0, 6), 1),
             ("dirt", (2, 0, 6), 1),
@@ -174,7 +174,7 @@ impl Game {
             ("box", (3, 0, 6), 0),
             ("box", (3, 4, 6), 0),
             ("grass", (5, 1, 0), 0),
-            ("grass", (5, 1, 3), 1),
+            ("grass", (5, 1, 2), 1),
             ("dirt", (5, 0, 0), 0),
             ("dirt", (5, 0, 1), 0),
             ("dirt", (5, 0, 2), 0),
@@ -189,6 +189,10 @@ impl Game {
             ("stone", (6, 0, 6), 1),
             ("stone", (6, 2, 5), 7),
             ("stone", (6, 2, 6), 5),
+            ("bricks", (7, 0, 7), 0),
+            ("bricks", (7, 0, 6), 0),
+            ("bricks", (5, 1, 7), 0),
+            ("bricks", (5, 3, 7), 0),
         ] {
             view.place(
                 Point::from_absolute(x, y, z).unwrap(),
@@ -198,20 +202,26 @@ impl Game {
         }
 
         let mut pf = PathFinder::new();
+        let start = Instant::now();
         pf.find(
-            Point::from_absolute(3, 2, 3).unwrap(),
-            9,
+            Position {
+                pn: Point::from_absolute(3, 2, 3).unwrap(),
+                value: 10,
+            },
             Walker::new(2, 2, 2, true, true).unwrap(),
             &view,
         );
+        let end = Instant::now();
+        println!("elapsed: {} ms", end.duration_since(start).as_millis());
 
         let path = pf.path();
         let cells = path.points().map(|pn| Cell(pn.into())).collect();
 
-        let pathes = path
+        let mut pathes: Vec<_> = path
             .points()
             .map(|pn| Path(path.to(pn).map(|(_, pn)| pn.into()).collect()))
             .collect();
+        pathes.sort_by_key(|path| path.0.len());
 
         Self {
             data: Data {

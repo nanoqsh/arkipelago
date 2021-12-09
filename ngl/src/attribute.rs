@@ -10,6 +10,7 @@ impl Attribute for i32 {
     const SYMBOLIC: u32 = glow::INT;
 }
 
+#[allow(clippy::use_self)]
 impl Attribute for u32 {
     const SYMBOLIC: u32 = glow::UNSIGNED_INT;
 }

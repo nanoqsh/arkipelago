@@ -26,6 +26,12 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {}
 
+#[derive(Copy, Clone)]
+pub struct Position {
+    pub pn: Point,
+    pub value: u32,
+}
+
 pub struct Walker {
     height: Height,
     jump_up: Height,
@@ -38,8 +44,8 @@ impl Walker {
     const MIN_HEIGHT: u8 = 2;
     const MAX_HEIGHT: u8 = 4;
     const MIN_JUMP: u8 = 1;
-    const MAX_JUMP_UP: u8 = 16;
-    const MAX_JUMP_DOWN: u8 = 16;
+    const MAX_JUMP_UP: u8 = 8;
+    const MAX_JUMP_DOWN: u8 = 8;
 
     pub fn new(
         height: u8,
@@ -71,12 +77,13 @@ impl Walker {
 }
 
 impl Walker {
-    pub fn actions_from<S, F>(&self, pn: Point, space: &S, mut callback: F)
+    pub(crate) fn from<S, F, C>(&self, pos: Position, space: &S, mut callback: F, closed: C)
     where
         S: Space,
-        F: FnMut(Action, Point),
+        F: FnMut(Action, Position),
+        C: Fn(Point) -> bool,
     {
-        for rotation in [Rotation::Q0, Rotation::Q1, Rotation::Q2, Rotation::Q3] {
+        'out: for rotation in [Rotation::Q0, Rotation::Q2, Rotation::Q1, Rotation::Q3] {
             for action in [
                 Action::StepStraight { rotation },
                 Action::StepUp {
@@ -95,77 +102,121 @@ impl Walker {
                     rotation,
                     ascent: false,
                 },
-                Action::JumpUp {
-                    rotation,
-                    height: Height::new(2).unwrap(),
+                Action::Fly {
+                    side: rotation.into(),
                 },
-                Action::JumpDown {
-                    rotation,
-                    height: Height::new(2).unwrap(),
-                },
-                Action::JumpOver { rotation },
             ] {
-                if let Some(action_pn) = self.act(pn, action, space) {
-                    callback(action, action_pn);
+                if closed(action.target(pos.pn)) {
+                    break;
+                }
+
+                if let Some(pos) = self.act(pos, action, space) {
+                    callback(action, pos);
+                    continue 'out;
+                }
+            }
+
+            for jump in 2..=self.jump_up.get() {
+                let action = Action::JumpUp {
+                    rotation,
+                    height: Height::new(jump).unwrap(),
+                };
+
+                if closed(action.target(pos.pn)) {
+                    break;
+                }
+
+                if let Some(pos) = self.act(pos, action, space) {
+                    callback(action, pos);
+                    break;
+                }
+            }
+
+            for jump in 2..=self.jump_down.get() {
+                let action = Action::JumpDown {
+                    rotation,
+                    height: Height::new(jump).unwrap(),
+                };
+
+                if closed(action.target(pos.pn)) {
+                    break;
+                }
+
+                if let Some(pos) = self.act(pos, action, space) {
+                    callback(action, pos);
                     break;
                 }
             }
         }
+
+        for action in [Action::LiftUp, Action::Fly { side: Side::Up }] {
+            if closed(action.target(pos.pn)) {
+                break;
+            }
+
+            if let Some(pos) = self.act(pos, action, space) {
+                callback(action, pos);
+                break;
+            }
+        }
+
+        for action in [Action::LiftDown, Action::Fly { side: Side::Down }] {
+            if closed(action.target(pos.pn)) {
+                break;
+            }
+
+            if let Some(pos) = self.act(pos, action, space) {
+                callback(action, pos);
+                break;
+            }
+        }
     }
 
-    pub fn act<S>(&self, pn: Point, action: Action, space: &S) -> Option<Point>
+    pub fn act<S>(&self, pos: Position, action: Action, space: &S) -> Option<Position>
     where
         S: Space,
     {
+        let value = if pos.value < action.cost() {
+            return None;
+        } else {
+            pos.value - action.cost()
+        };
+
         let h = self.height + 1;
-        match action {
-            Action::Stay => Some(pn),
-            Action::StepStraight { rotation } => {
-                let target = pn.to(rotation);
-                space
-                    .column(target.to(Side::Down), h)
-                    .iter()
-                    .enumerate()
-                    .all(|(i, pass)| match i {
+        let target = action.target(pos.pn);
+        let ok = match action {
+            Action::Stay => true,
+            Action::StepStraight { .. } => space
+                .column(target.to(Side::Down), h)
+                .iter()
+                .enumerate()
+                .all(|(i, pass)| match i {
+                    0 => pass.is_passable(),
+                    1 => !pass.is_solid() || pass.is_lift(),
+                    _ => !pass.is_solid(),
+                }),
+            Action::StepUp { rotation, ascent } => {
+                let mut it = space.column(target.to(Side::Down), h).iter().enumerate();
+
+                if ascent {
+                    it.all(|(i, pass)| match i {
+                        0 => pass.is_passable() && pass.ascent_from(rotation.opposite()),
+                        _ => !pass.is_solid(),
+                    })
+                } else {
+                    it.all(|(i, pass)| match i {
                         0 => pass.is_passable(),
                         _ => !pass.is_solid(),
                     })
-                    .then(|| target)
-            }
-            Action::StepUp { rotation, ascent } => {
-                let pn = pn.to(rotation);
-                if ascent {
-                    let pn = pn.to(Side::Up);
-                    space
-                        .column(pn, h)
-                        .iter()
-                        .enumerate()
-                        .all(|(i, pass)| match i {
-                            0 => pass.is_passable() && pass.ascent_from(rotation.opposite()),
-                            _ => !pass.is_solid(),
-                        })
-                        .then(|| pn.to(Side::Up))
-                } else {
-                    space
-                        .column(pn, h)
-                        .iter()
-                        .enumerate()
-                        .all(|(i, pass)| match i {
-                            0 => pass.is_passable(),
-                            _ => !pass.is_solid(),
-                        })
-                        .then(|| pn.to(Side::Up))
                 }
             }
             Action::StepDown { rotation, ascent } => {
-                let down = pn.to(Side::Down);
-                let mut target = down.to(rotation);
-                if ascent {
-                    if !space.get(down).ascent_from(rotation.opposite()) {
-                        return None;
-                    }
-
-                    target = target.to(Side::Down)
+                if ascent
+                    && !space
+                        .get(pos.pn.to(Side::Down))
+                        .ascent_from(rotation.opposite())
+                {
+                    return None;
                 }
 
                 space
@@ -176,26 +227,39 @@ impl Walker {
                         0 => pass.is_passable(),
                         _ => !pass.is_solid(),
                     })
-                    .then(|| target)
             }
+            Action::LiftUp => space
+                .column(target.to(Side::Down), self.height)
+                .iter()
+                .enumerate()
+                .all(|(i, pass)| match i {
+                    0 => pass.is_lift(),
+                    _ => !pass.is_solid(),
+                }),
+            Action::LiftDown => space
+                .column(target.to(Side::Up), self.height)
+                .iter()
+                .enumerate()
+                .all(|(i, pass)| match i {
+                    0 => pass.is_lift(),
+                    _ => !pass.is_solid(),
+                }),
             Action::JumpUp {
-                rotation,
                 height: jump_height,
+                ..
             } => {
                 if jump_height > self.jump_up {
                     return None;
                 }
 
-                let pn = pn + jump_height;
                 if space
-                    .column(pn, self.height)
+                    .column(pos.pn + jump_height, self.height)
                     .iter()
                     .any(|pass| pass.is_solid())
                 {
                     return None;
                 }
 
-                let target = pn.to(rotation);
                 space
                     .column(target.to(Side::Down), h)
                     .iter()
@@ -204,17 +268,15 @@ impl Walker {
                         0 => pass.is_passable(),
                         _ => !pass.is_solid(),
                     })
-                    .then(|| target)
             }
             Action::JumpDown {
-                rotation,
                 height: jump_height,
+                ..
             } => {
                 if jump_height > self.jump_down {
                     return None;
                 }
 
-                let target = pn.to(rotation) - jump_height;
                 space
                     .column(target.to(Side::Down), h + jump_height)
                     .iter()
@@ -223,18 +285,14 @@ impl Walker {
                         0 => pass.is_passable(),
                         _ => !pass.is_solid(),
                     })
-                    .then(|| target)
             }
             Action::JumpOver { rotation } => {
                 if !self.jump_over {
                     return None;
                 }
 
-                let mid = pn.to(rotation);
-                let low = mid - Height::new(2).unwrap();
-                let target = mid.to(rotation);
-
-                (space.column(low, h + 1).iter().all(|pass| !pass.is_solid())
+                let low = pos.pn.to(rotation) - Height::new(2).unwrap();
+                space.column(low, h + 1).iter().all(|pass| !pass.is_solid())
                     && space
                         .column(target.to(Side::Down), h)
                         .iter()
@@ -242,10 +300,22 @@ impl Walker {
                         .all(|(i, pass)| match i {
                             0 => pass.is_passable(),
                             _ => !pass.is_solid(),
-                        }))
-                .then(|| target)
+                        })
             }
-            _ => todo!(),
-        }
+            Action::Fall { .. } => todo!(),
+            Action::Fly { .. } => {
+                if !self.fly {
+                    return None;
+                }
+
+                space
+                    .column(target, self.height)
+                    .iter()
+                    .all(|pass| !pass.is_solid())
+            }
+            Action::Impossible => return None,
+        };
+
+        ok.then(|| Position { pn: target, value })
     }
 }

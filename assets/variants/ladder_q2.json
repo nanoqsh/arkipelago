@@ -1,0 +1,13 @@
+{
+    "samples": [
+        {
+            "name": "plane_vertical",
+            "rotation": 2
+        },
+        {
+            "name": "plane_vertical",
+            "rotation": 2
+        }
+    ],
+    "sprite": "ladder"
+}

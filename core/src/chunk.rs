@@ -77,15 +77,3 @@ impl<T: Copy + Default> Default for Chunk<T> {
         Self::filled(T::default())
     }
 }
-
-impl<T> AsRef<Chunk<T>> for Chunk<T> {
-    fn as_ref(&self) -> &Chunk<T> {
-        self
-    }
-}
-
-impl<T> AsMut<Chunk<T>> for Chunk<T> {
-    fn as_mut(&mut self) -> &mut Chunk<T> {
-        self
-    }
-}
