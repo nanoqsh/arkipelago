@@ -3,7 +3,7 @@ use crate::{
         action::Action,
         space::Space,
         tree::{NodePtr, Tree},
-        walker::{Position, Walker},
+        walker::{from, Flyer, Position},
     },
     point::Point,
 };
@@ -20,14 +20,14 @@ pub struct PathFinder {
 impl PathFinder {
     pub fn new() -> Self {
         Self {
-            closed: HashMap::default(),
-            open: Vec::default(),
-            buf: Vec::default(),
+            closed: HashMap::with_capacity(64),
+            open: Vec::with_capacity(64),
+            buf: Vec::with_capacity(64),
             tree: Tree::default(),
         }
     }
 
-    pub fn find<S>(&mut self, pos: Position, walker: Walker, space: &S)
+    pub fn find<S>(&mut self, pos: Position, walker: &Flyer, space: &S)
     where
         S: Space,
     {
@@ -35,24 +35,24 @@ impl PathFinder {
             return;
         }
 
-        let ptr = self.tree.push(None, (Action::Stay, pos));
+        let ptr = self.tree.push(NodePtr::ROOT, (Action::Stay, pos));
         self.open.push(ptr);
 
         loop {
             for parent in &self.open {
                 let pos = self.tree.get(*parent).1;
-
-                walker.from(
+                from(
+                    walker,
                     pos,
                     space,
-                    |act, pos| {
-                        let ptr = self.tree.push(Some(*parent), (act, pos));
+                    |action, pos| {
+                        let ptr = self.tree.push(*parent, (action, pos));
                         if pos.value != 0 {
                             self.buf.push(ptr)
                         }
                     },
                     |pn| self.closed.contains_key(&pn),
-                );
+                )
             }
 
             for ptr in self.open.drain(..) {
@@ -93,10 +93,13 @@ pub struct Path<'a>(&'a PathFinder);
 
 impl Path<'_> {
     pub fn points(&self) -> impl Iterator<Item = Point> + '_ {
-        self.0
-            .closed
-            .iter()
-            .filter_map(|(pn, ptr)| self.0.tree.get(*ptr).0.is_final().then(|| *pn))
+        self.0.closed.iter().filter_map(|(pn, ptr)| {
+            if *ptr == NodePtr::ROOT {
+                None
+            } else {
+                self.0.tree.get(*ptr).0.is_final().then(|| *pn)
+            }
+        })
     }
 
     pub fn to(&self, pn: Point) -> impl Iterator<Item = (Action, Point)> + '_ {

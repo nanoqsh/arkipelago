@@ -10,5 +10,5 @@ pub use self::{
     finder::PathFinder,
     pass::Pass,
     space::Space,
-    walker::{Position, Walker},
+    walker::{Flyer, Pedestrian, Position},
 };

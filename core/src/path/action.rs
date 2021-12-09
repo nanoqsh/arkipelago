@@ -64,7 +64,7 @@ impl Action {
             Self::StepDown { .. } => 1,
             Self::LiftUp => 1,
             Self::LiftDown => 1,
-            Self::JumpUp { height, .. } => height.get() as u32,
+            Self::JumpUp { height, .. } => height.get() as u32 + 1,
             Self::JumpDown { height, .. } => height.get() as u32,
             Self::JumpOver { .. } => 3,
             Self::Fall { .. } => 1,

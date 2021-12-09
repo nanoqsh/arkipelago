@@ -7,7 +7,7 @@ use crate::{
     Render, Texture, Vert,
 };
 use core::{
-    path::{PathFinder, Position, Walker},
+    path::{Flyer, PathFinder, Pedestrian, Position},
     prelude::*,
 };
 use image::DynamicImage;
@@ -202,13 +202,19 @@ impl Game {
         }
 
         let mut pf = PathFinder::new();
+        let walker = Flyer {
+            walk: Pedestrian {
+                height: Height::new(2).unwrap(),
+            },
+        };
+
         let start = Instant::now();
         pf.find(
             Position {
                 pn: Point::from_absolute(3, 2, 3).unwrap(),
-                value: 10,
+                value: 12,
             },
-            Walker::new(2, 2, 2, true, true).unwrap(),
+            &walker,
             &view,
         );
         let end = Instant::now();
