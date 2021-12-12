@@ -3,7 +3,7 @@ use crate::{
         action::Action,
         space::Space,
         tree::{NodePtr, Tree},
-        walker::{from, Flyer, Position},
+        walk::{Close, Position, Walk},
     },
     point::Point,
 };
@@ -27,8 +27,9 @@ impl PathFinder {
         }
     }
 
-    pub fn find<S>(&mut self, pos: Position, walker: &Flyer, space: &S)
+    pub fn find<W, S>(&mut self, pos: Position, walk: &W, space: &S)
     where
+        W: Walk<S>,
         S: Space,
     {
         if pos.value == 0 {
@@ -41,18 +42,14 @@ impl PathFinder {
         loop {
             for parent in &self.open {
                 let pos = self.tree.get(*parent).1;
-                from(
-                    walker,
-                    pos,
-                    space,
-                    |action, pos| {
-                        let ptr = self.tree.push(*parent, (action, pos));
-                        if pos.value != 0 {
-                            self.buf.push(ptr)
-                        }
-                    },
-                    |pn| self.closed.contains_key(&pn),
-                )
+                let mut close = Closer {
+                    closed: &self.closed,
+                    buf: &mut self.buf,
+                    tree: &mut self.tree,
+                    parent: *parent,
+                };
+
+                walk.walk(space, pos, &mut close)
             }
 
             for ptr in self.open.drain(..) {
@@ -86,6 +83,26 @@ impl PathFinder {
         self.closed.clear();
         self.open.clear();
         self.tree.clear();
+    }
+}
+
+struct Closer<'a> {
+    closed: &'a HashMap<Point, NodePtr>,
+    buf: &'a mut Vec<NodePtr>,
+    tree: &'a mut Tree<(Action, Position)>,
+    parent: NodePtr,
+}
+
+impl Close for Closer<'_> {
+    fn close(&mut self, action: Action, pos: Position) {
+        if self.closed.contains_key(&pos.pn) {
+            return;
+        }
+
+        let ptr = self.tree.push(self.parent, (action, pos));
+        if pos.value != 0 {
+            self.buf.push(ptr)
+        }
     }
 }
 

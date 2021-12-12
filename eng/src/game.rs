@@ -136,11 +136,14 @@ impl Game {
             ("stone", (3, 1, 1), 0),
             ("stone", (3, 2, 0), 0),
             ("stone", (4, 3, 0), 0),
-            ("dirt", (5, 5, 0), 0),
-            ("dirt", (6, 5, 0), 2),
-            ("ladder", (5, 2, 3), 0),
+            ("dirt", (5, 4, 0), 0),
+            ("dirt", (6, 4, 0), 2),
+            ("ladder", (6, 1, 3), 0),
+            ("dirt", (5, 4, 2), 0),
+            ("dirt", (6, 4, 2), 0),
             ("dirt", (5, 5, 2), 0),
-            ("dirt", (6, 5, 2), 0),
+            ("dirt", (5, 6, 2), 0),
+            ("dirt", (5, 7, 2), 0),
             ("dirt", (0, 0, 3), 0),
             ("dirt", (1, 0, 3), 0),
             ("dirt", (0, 0, 4), 0),
@@ -193,6 +196,23 @@ impl Game {
             ("bricks", (7, 0, 6), 0),
             ("bricks", (5, 1, 7), 0),
             ("bricks", (5, 3, 7), 0),
+            ("bricks", (7, 0, 7), 0),
+            ("bricks", (9, 0, 5), 0),
+            ("bricks", (9, 2, 5), 0),
+            ("bricks", (9, 4, 5), 0),
+            ("bricks", (10, 0, 4), 0),
+            ("bricks", (10, 2, 4), 0),
+            ("bricks", (10, 4, 4), 0),
+            ("bricks", (10, 0, 5), 0),
+            ("bricks", (9, 0, 4), 0),
+            ("bricks", (9, 2, 4), 0),
+            ("bricks", (9, 0, 2), 0),
+            ("bricks", (9, 2, 2), 0),
+            ("bricks", (9, 0, 0), 0),
+            ("bricks", (9, 2, 0), 0),
+            ("bricks", (11, 0, 2), 0),
+            ("bricks", (11, 2, 2), 0),
+            ("bricks", (11, 4, 2), 0),
         ] {
             view.place(
                 Point::from_absolute(x, y, z).unwrap(),
@@ -202,9 +222,10 @@ impl Game {
         }
 
         let mut pf = PathFinder::new();
-        let walker = Flyer {
+        let walk = Flyer {
             walk: Pedestrian {
                 height: Height::new(2).unwrap(),
+                jump_down: Height::new(4).unwrap(),
             },
         };
 
@@ -212,9 +233,9 @@ impl Game {
         pf.find(
             Position {
                 pn: Point::from_absolute(3, 2, 3).unwrap(),
-                value: 12,
+                value: 16,
             },
-            &walker,
+            &walk,
             &view,
         );
         let end = Instant::now();

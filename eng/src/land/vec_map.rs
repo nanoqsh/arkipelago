@@ -29,15 +29,6 @@ impl<T: Copy> Map<T> {
         }
     }
 
-    pub unsafe fn get_unchecked(&self, key: u32) -> T {
-        let key = key as usize;
-        debug_assert!(key < self.map.len());
-        let val = self.map.get_unchecked(key);
-        debug_assert!(val.is_some());
-        val.unwrap_or_else(|| std::hint::unreachable_unchecked())
-    }
-
-    #[cfg(test)]
     pub fn get(&self, key: u32) -> T {
         self.map[key as usize].unwrap()
     }

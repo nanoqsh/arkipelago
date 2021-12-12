@@ -25,25 +25,23 @@ impl Builder {
         D: IntoIterator<Item = VertexData>,
         V: Fn(u32, u32) -> Vert,
     {
-        unsafe {
-            let indxs_offset = self.indxs.len();
-            let verts_offset = self.verts.len() as u32;
+        let indxs_offset = self.indxs.len();
+        let verts_offset = self.verts.len() as u32;
 
-            let mut counter = 0;
-            self.added.clear();
-            for vd in data {
-                self.indxs.extend(vd.face);
-                for idx in vd.face {
-                    if self.added.insert(idx, counter) {
-                        counter += 1;
-                        self.verts.push(vertex(idx, vd.slot));
-                    }
+        let mut counter = 0;
+        self.added.clear();
+        for vd in data {
+            self.indxs.extend(vd.face);
+            for idx in vd.face {
+                if self.added.insert(idx, counter) {
+                    counter += 1;
+                    self.verts.push(vertex(idx, vd.slot));
                 }
             }
+        }
 
-            for idx in self.indxs[indxs_offset..].iter_mut() {
-                *idx = self.added.get_unchecked(*idx) + verts_offset;
-            }
+        for idx in self.indxs[indxs_offset..].iter_mut() {
+            *idx = self.added.get(*idx) + verts_offset;
         }
     }
 
