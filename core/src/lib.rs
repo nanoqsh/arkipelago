@@ -1,5 +1,6 @@
 mod chunk;
 mod height;
+mod load;
 pub mod map;
 pub mod net;
 pub mod path;

@@ -1,4 +1,21 @@
 use crate::rotation::Rotation;
+use serde::Deserialize;
+use std::{error, fmt};
+
+#[derive(Debug)]
+pub enum ParseError {
+    String(String),
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::String(str) => write!(f, "wrong string {:?}", str),
+        }
+    }
+}
+
+impl error::Error for ParseError {}
 
 /// Pass layout.
 ///
@@ -10,7 +27,8 @@ use crate::rotation::Rotation;
 ///     d: ascent from Q3
 ///     l: lift / pathless
 ///     s: solid
-#[derive(Copy, Clone)]
+#[derive(Deserialize, Copy, Clone)]
+#[serde(try_from = "PassFrom")]
 pub struct Pass(u8);
 
 impl Pass {
@@ -55,5 +73,29 @@ impl Pass {
 
     pub const fn ascent_from(self, rotation: Rotation) -> bool {
         self.0 & (1 << (rotation as u8 + 2)) != 0
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum PassFrom<'a> {
+    String(&'a str),
+    Rotations(Vec<Rotation>),
+}
+
+impl TryFrom<PassFrom<'_>> for Pass {
+    type Error = ParseError;
+
+    fn try_from(from: PassFrom) -> Result<Self, Self::Error> {
+        match from {
+            PassFrom::String(str) => match str {
+                "empty" => Ok(Self::empty()),
+                "solid" => Ok(Self::solid()),
+                "lift" => Ok(Self::lift()),
+                "pathless" => Ok(Self::pathless()),
+                _ => Err(ParseError::String(str.into())),
+            },
+            PassFrom::Rotations(rotations) => Ok(Self::ascent(rotations)),
+        }
     }
 }

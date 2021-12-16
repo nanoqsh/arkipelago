@@ -1,5 +1,5 @@
-use crate::{height::Height, path::Pass, rotation::Rotation};
-use std::{collections::HashMap, fmt};
+use crate::{height::Height, load::load_tiles, path::Pass};
+use std::{collections::HashMap, fmt, rc::Rc};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct TileIndex(u16);
@@ -52,7 +52,7 @@ impl fmt::Debug for VariantIndex {
 
 pub struct VariantInfo {
     idx: VariantIndex,
-    name: &'static str,
+    name: String,
     passes: Vec<Pass>,
 }
 
@@ -61,8 +61,8 @@ impl VariantInfo {
         self.idx
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn passes(&self) -> &[Pass] {
@@ -72,7 +72,7 @@ impl VariantInfo {
 
 pub struct TileInfo {
     idx: TileIndex,
-    name: &'static str,
+    name: Rc<str>,
     height: Height,
     variants: Vec<VariantInfo>,
 }
@@ -82,8 +82,8 @@ impl TileInfo {
         self.idx
     }
 
-    pub fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn height(&self) -> Height {
@@ -100,7 +100,7 @@ impl TileInfo {
 }
 
 pub struct TileList {
-    map: HashMap<&'static str, TileIndex>,
+    map: HashMap<Rc<str>, TileIndex>,
     vec: Vec<TileInfo>,
 }
 
@@ -111,120 +111,25 @@ impl TileList {
             map: HashMap::default(),
             vec: vec![TileInfo {
                 idx: TileIndex::new(1).unwrap(),
-                name: "",
+                name: "".into(),
                 height: Height::new(1).unwrap(),
                 variants: Vec::default(),
             }],
         };
 
-        list.add(
-            "dirt",
-            1,
-            [
-                ("dirt", vec![Pass::solid()]),
-                ("dirt_bevel_q0", vec![Pass::ascent([Rotation::Q0])]),
-                ("dirt_bevel_q1", vec![Pass::ascent([Rotation::Q1])]),
-                ("dirt_bevel_q2", vec![Pass::ascent([Rotation::Q2])]),
-                ("dirt_bevel_q3", vec![Pass::ascent([Rotation::Q3])]),
-            ],
-        );
-        list.add(
-            "grass",
-            2,
-            [
-                ("grass_0", vec![Pass::empty(), Pass::empty()]),
-                ("grass_1", vec![Pass::empty(), Pass::empty()]),
-            ],
-        );
-        list.add("rocks", 1, [("rocks", vec![Pass::empty()])]);
-        list.add(
-            "stone",
-            2,
-            [
-                ("stone", vec![Pass::solid(), Pass::solid()]),
-                ("stone_bevel_q0", vec![Pass::solid(), Pass::solid()]),
-                ("stone_bevel_q1", vec![Pass::solid(), Pass::solid()]),
-                ("stone_bevel_q2", vec![Pass::solid(), Pass::solid()]),
-                ("stone_bevel_q3", vec![Pass::solid(), Pass::solid()]),
-                (
-                    "stone_bevel_vertical_q0",
-                    vec![Pass::solid(), Pass::pathless()],
-                ),
-                (
-                    "stone_bevel_vertical_q1",
-                    vec![Pass::solid(), Pass::pathless()],
-                ),
-                (
-                    "stone_bevel_vertical_q2",
-                    vec![Pass::solid(), Pass::pathless()],
-                ),
-                (
-                    "stone_bevel_vertical_q3",
-                    vec![Pass::solid(), Pass::pathless()],
-                ),
-            ],
-        );
-        list.add(
-            "bricks",
-            2,
-            [("bricks", vec![Pass::solid(), Pass::solid()])],
-        );
-        list.add("box", 2, [("box", vec![Pass::solid(), Pass::solid()])]);
-        list.add(
-            "steps",
-            2,
-            [
-                (
-                    "steps_q0",
-                    vec![Pass::solid(), Pass::ascent([Rotation::Q0])],
-                ),
-                (
-                    "steps_q1",
-                    vec![Pass::solid(), Pass::ascent([Rotation::Q1])],
-                ),
-                (
-                    "steps_q2",
-                    vec![Pass::solid(), Pass::ascent([Rotation::Q2])],
-                ),
-                (
-                    "steps_q3",
-                    vec![Pass::solid(), Pass::ascent([Rotation::Q3])],
-                ),
-            ],
-        );
-        list.add(
-            "ladder",
-            4,
-            [
-                (
-                    "ladder_q0",
-                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
-                ),
-                (
-                    "ladder_q1",
-                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
-                ),
-                (
-                    "ladder_q2",
-                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
-                ),
-                (
-                    "ladder_q3",
-                    vec![Pass::lift(), Pass::lift(), Pass::lift(), Pass::lift()],
-                ),
-            ],
-        );
+        load_tiles(&mut list).expect("load tiles");
         list
     }
 
-    pub fn add<V>(&mut self, name: &'static str, height: u8, variants: V)
+    pub fn add<V>(&mut self, name: &str, height: Height, variants: V)
     where
-        V: IntoIterator<Item = (&'static str, Vec<Pass>)>,
+        V: IntoIterator<Item = (String, Vec<Pass>)>,
     {
         let idx = self.vec.len();
         assert!(idx <= u16::MAX as usize);
         let tile_idx = TileIndex::new(idx as u16).unwrap();
-        let old = self.map.insert(name, tile_idx);
+        let name = name.into();
+        let old = self.map.insert(Rc::clone(&name), tile_idx);
         assert!(old.is_none());
         self.vec.push(TileInfo {
             idx: tile_idx,
@@ -239,12 +144,12 @@ impl TileList {
                     },
                     name,
                     passes: {
-                        assert_eq!(passes.len(), height as usize);
+                        assert_eq!(height.get() as usize, passes.len());
                         passes
                     },
                 })
                 .collect(),
-            height: Height::new(height).unwrap(),
+            height,
         });
     }
 
