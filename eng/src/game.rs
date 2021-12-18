@@ -83,9 +83,9 @@ impl Game {
             loader.load_sprite("tiles/default").unwrap();
 
             for info in tiles.iter() {
-                for variant in info.variants() {
-                    let to_variant = loader.load_variant(variant.name()).unwrap();
-                    to_variants.push(((info.index(), variant.index()), to_variant));
+                for variant in &info.variants {
+                    let to_variant = loader.load_variant(&variant.name).unwrap();
+                    to_variants.push(((info.idx, variant.idx), (to_variant, variant.rotation)));
                 }
             }
 
@@ -98,9 +98,9 @@ impl Game {
         let mut factory = Factory::new(mapper);
 
         let mut variant_set = VariantSet::new();
-        for (key, to_variant) in to_variants {
+        for (key, (to_variant, rotation)) in to_variants {
             let variant = to_variant
-                .to_variant(&mut factory, &mut polygons, |sprite| {
+                .to_variant(&mut factory, rotation, &mut polygons, |sprite| {
                     let idx = match sprite {
                         None => 0,
                         Some(name) => match sprite_names.get(name) {

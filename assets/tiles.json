@@ -10,7 +10,7 @@
                 ]
             },
             {
-                "name": "dirt_bevel_q0",
+                "name": "dirt_bevel",
                 "passes": [
                     [
                         0,
@@ -20,7 +20,8 @@
                 ]
             },
             {
-                "name": "dirt_bevel_q1",
+                "name": "dirt_bevel",
+                "rotation": 1,
                 "passes": [
                     [
                         0,
@@ -30,7 +31,8 @@
                 ]
             },
             {
-                "name": "dirt_bevel_q2",
+                "name": "dirt_bevel",
+                "rotation": 2,
                 "passes": [
                     [
                         1,
@@ -40,7 +42,8 @@
                 ]
             },
             {
-                "name": "dirt_bevel_q3",
+                "name": "dirt_bevel",
+                "rotation": 3,
                 "passes": [
                     [
                         0,
@@ -95,56 +98,62 @@
                 ]
             },
             {
-                "name": "stone_bevel_q0",
+                "name": "stone_bevel",
                 "passes": [
                     "solid",
                     "solid"
                 ]
             },
             {
-                "name": "stone_bevel_q1",
+                "name": "stone_bevel",
+                "rotation": 1,
                 "passes": [
                     "solid",
                     "solid"
                 ]
             },
             {
-                "name": "stone_bevel_q2",
+                "name": "stone_bevel",
+                "rotation": 2,
                 "passes": [
                     "solid",
                     "solid"
                 ]
             },
             {
-                "name": "stone_bevel_q3",
+                "name": "stone_bevel",
+                "rotation": 3,
                 "passes": [
                     "solid",
                     "solid"
                 ]
             },
             {
-                "name": "stone_bevel_vertical_q0",
+                "name": "stone_bevel_vertical",
                 "passes": [
                     "solid",
                     "pathless"
                 ]
             },
             {
-                "name": "stone_bevel_vertical_q1",
+                "name": "stone_bevel_vertical",
+                "rotation": 1,
                 "passes": [
                     "solid",
                     "pathless"
                 ]
             },
             {
-                "name": "stone_bevel_vertical_q2",
+                "name": "stone_bevel_vertical",
+                "rotation": 2,
                 "passes": [
                     "solid",
                     "pathless"
                 ]
             },
             {
-                "name": "stone_bevel_vertical_q3",
+                "name": "stone_bevel_vertical",
+                "rotation": 3,
                 "passes": [
                     "solid",
                     "pathless"
@@ -183,7 +192,7 @@
         "height": 2,
         "variants": [
             {
-                "name": "steps_q0",
+                "name": "steps",
                 "passes": [
                     "solid",
                     [
@@ -194,7 +203,8 @@
                 ]
             },
             {
-                "name": "steps_q1",
+                "name": "steps",
+                "rotation": 1,
                 "passes": [
                     "solid",
                     [
@@ -205,7 +215,8 @@
                 ]
             },
             {
-                "name": "steps_q2",
+                "name": "steps",
+                "rotation": 2,
                 "passes": [
                     "solid",
                     [
@@ -216,7 +227,8 @@
                 ]
             },
             {
-                "name": "steps_q3",
+                "name": "steps",
+                "rotation": 3,
                 "passes": [
                     "solid",
                     [
@@ -233,7 +245,7 @@
         "height": 4,
         "variants": [
             {
-                "name": "ladder_q0",
+                "name": "ladder",
                 "passes": [
                     "lift",
                     "lift",
@@ -242,7 +254,8 @@
                 ]
             },
             {
-                "name": "ladder_q1",
+                "name": "ladder",
+                "rotation": 1,
                 "passes": [
                     "lift",
                     "lift",
@@ -251,7 +264,8 @@
                 ]
             },
             {
-                "name": "ladder_q2",
+                "name": "ladder",
+                "rotation": 2,
                 "passes": [
                     "lift",
                     "lift",
@@ -260,7 +274,8 @@
                 ]
             },
             {
-                "name": "ladder_q3",
+                "name": "ladder",
+                "rotation": 3,
                 "passes": [
                     "lift",
                     "lift",

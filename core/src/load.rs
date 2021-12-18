@@ -1,4 +1,4 @@
-use crate::{height::Height, path::Pass, tile::TileList};
+use crate::{height::Height, path::Pass, prelude::Rotation, tile::TileList};
 use serde::Deserialize;
 use std::io;
 
@@ -26,6 +26,8 @@ impl From<serde_json::Error> for Error {
 #[derive(Deserialize)]
 struct RawVariant {
     name: String,
+    #[serde(default)]
+    rotation: Rotation,
     passes: Vec<Pass>,
 }
 
@@ -53,9 +55,13 @@ fn load(tile: RawTile, list: &mut TileList) -> Result<(), Error> {
     list.add(
         name,
         height,
-        variants
-            .into_iter()
-            .map(|RawVariant { name, passes }| (name, passes)),
+        variants.into_iter().map(
+            |RawVariant {
+                 name,
+                 rotation,
+                 passes,
+             }| (name, rotation, passes),
+        ),
     );
     Ok(())
 }
@@ -63,5 +69,5 @@ fn load(tile: RawTile, list: &mut TileList) -> Result<(), Error> {
 pub(crate) fn load_tiles(list: &mut TileList) -> Result<(), Error> {
     let content = std::fs::read_to_string(PATH)?;
     let tiles: Vec<RawTile> = serde_json::from_str(&content)?;
-    tiles.into_iter().map(|tile| load(tile, list)).collect()
+    tiles.into_iter().try_for_each(|tile| load(tile, list))
 }

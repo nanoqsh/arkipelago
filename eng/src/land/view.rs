@@ -102,9 +102,9 @@ impl ClusterView {
     }
 
     pub fn place(&mut self, pn: Point, tile: &TileInfo, variant: VariantIndex) {
-        let height = tile.height();
+        let height = tile.height;
         let mut column = self.map.column_mut(pn, height);
-        let key = (tile.index(), variant);
+        let key = (tile.idx, variant);
         *column.get_mut(0) = key.into();
         for (i, slab) in column.iter_mut().skip(1).enumerate() {
             *slab = Slab::Trunk(i as u8)
@@ -112,7 +112,7 @@ impl ClusterView {
 
         let variant = tile.variant(variant);
         let mut column = self.map.column_mut(pn, height);
-        for (dst, src) in column.iter_mut().zip(variant.passes()) {
+        for (dst, src) in column.iter_mut().zip(&variant.passes) {
             *dst = *src;
         }
 

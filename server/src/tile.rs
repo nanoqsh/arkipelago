@@ -31,9 +31,8 @@ impl TileSet {
         };
 
         for info in tiles {
-            let name = info.name();
             let tile = Box::new(tiles::Base::new(2, vec!["cube"]));
-            tile_set.add(name, tile);
+            tile_set.add(info.name.as_ref(), tile);
         }
 
         tile_set

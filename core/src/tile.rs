@@ -1,4 +1,4 @@
-use crate::{height::Height, load::load_tiles, path::Pass};
+use crate::{height::Height, load::load_tiles, path::Pass, prelude::Rotation};
 use std::{collections::HashMap, fmt, rc::Rc};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
@@ -51,49 +51,20 @@ impl fmt::Debug for VariantIndex {
 }
 
 pub struct VariantInfo {
-    idx: VariantIndex,
-    name: String,
-    passes: Vec<Pass>,
-}
-
-impl VariantInfo {
-    pub fn index(&self) -> VariantIndex {
-        self.idx
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn passes(&self) -> &[Pass] {
-        &self.passes
-    }
+    pub idx: VariantIndex,
+    pub name: String,
+    pub rotation: Rotation,
+    pub passes: Vec<Pass>,
 }
 
 pub struct TileInfo {
-    idx: TileIndex,
-    name: Rc<str>,
-    height: Height,
-    variants: Vec<VariantInfo>,
+    pub idx: TileIndex,
+    pub name: Rc<str>,
+    pub height: Height,
+    pub variants: Vec<VariantInfo>,
 }
 
 impl TileInfo {
-    pub fn index(&self) -> TileIndex {
-        self.idx
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn height(&self) -> Height {
-        self.height
-    }
-
-    pub fn variants(&self) -> &[VariantInfo] {
-        &self.variants
-    }
-
     pub fn variant(&self, idx: VariantIndex) -> &VariantInfo {
         &self.variants[idx.0 as usize]
     }
@@ -123,7 +94,7 @@ impl TileList {
 
     pub fn add<V>(&mut self, name: &str, height: Height, variants: V)
     where
-        V: IntoIterator<Item = (String, Vec<Pass>)>,
+        V: IntoIterator<Item = (String, Rotation, Vec<Pass>)>,
     {
         let idx = self.vec.len();
         assert!(idx <= u16::MAX as usize);
@@ -137,12 +108,13 @@ impl TileList {
             variants: variants
                 .into_iter()
                 .enumerate()
-                .map(|(idx, (name, passes))| VariantInfo {
+                .map(|(idx, (name, rotation, passes))| VariantInfo {
                     idx: {
                         assert!(idx <= u8::MAX as usize);
                         VariantIndex(idx as u8)
                     },
                     name,
+                    rotation,
                     passes: {
                         assert_eq!(height.get() as usize, passes.len());
                         passes

@@ -25,7 +25,6 @@ use std::{
 #[derive(Debug)]
 enum VariantError {
     Empty,
-    Rotation(u8),
     Slot(String),
 }
 
@@ -33,7 +32,6 @@ impl fmt::Display for VariantError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Empty => write!(f, "variant is empty"),
-            Self::Rotation(rotation) => write!(f, "wrong rotation {}", rotation),
             Self::Slot(slot) => write!(f, "wrong slot {}", slot),
         }
     }
@@ -55,7 +53,7 @@ enum RawSample<'a> {
     Obj {
         name: &'a str,
         #[serde(default)]
-        rotation: u8,
+        rotation: Rotation,
         #[serde(default)]
         discard: HashSet<String>,
         sprites: Option<Sprites>,
@@ -85,6 +83,7 @@ impl ToVariant {
     pub fn to_variant<S>(
         &self,
         factory: &mut Factory,
+        rotation: Rotation,
         man: &mut Polygons,
         st: S,
     ) -> Result<Variant, variant::Error>
@@ -104,7 +103,7 @@ impl ToVariant {
                 let mesh = variant::Mesh {
                     shape: factory.borrow_mut().make(Parameters {
                         mesh,
-                        rotation: info.rotation,
+                        rotation: info.rotation + rotation,
                         discard: &info.discard,
                         contact,
                     }),
@@ -174,13 +173,7 @@ where
                         rotation,
                         discard,
                         sprites,
-                    } => (
-                        name,
-                        Rotation::from_quarters(rotation)
-                            .ok_or(VariantError::Rotation(rotation))?,
-                        discard,
-                        sprites,
-                    ),
+                    } => (name, rotation, discard, sprites),
                 };
 
                 if let Some(sprites) = &sprites {

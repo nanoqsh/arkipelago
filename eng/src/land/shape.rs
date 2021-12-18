@@ -48,7 +48,7 @@ impl Factory {
         } = params;
 
         let key = Key {
-            mesh: mesh as *const _,
+            mesh,
             rotation,
             discard: mesh
                 .slots()

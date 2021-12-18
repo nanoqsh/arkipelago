@@ -1,7 +1,7 @@
 use crate::side::Side;
 use serde::Deserialize;
 use shr::cgm::Vec3;
-use std::{error, fmt};
+use std::{error, fmt, ops};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ParseError {
@@ -29,13 +29,13 @@ pub enum Rotation {
 
 impl Rotation {
     pub const fn from_quarters(quarters: u8) -> Option<Self> {
-        Some(match quarters {
-            0 => Self::Q0,
-            1 => Self::Q1,
-            2 => Self::Q2,
-            3 => Self::Q3,
-            _ => return None,
-        })
+        match quarters {
+            0 => Some(Self::Q0),
+            1 => Some(Self::Q1),
+            2 => Some(Self::Q2),
+            3 => Some(Self::Q3),
+            _ => None,
+        }
     }
 
     pub const fn opposite(self) -> Self {
@@ -130,6 +130,22 @@ impl fmt::Display for Rotation {
 impl fmt::Debug for Rotation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl ops::AddAssign for Rotation {
+    fn add_assign(&mut self, rhs: Self) {
+        let quarters = *self as u8 + rhs as u8;
+        *self = Self::from_quarters(quarters % 4).unwrap()
+    }
+}
+
+impl ops::Add for Rotation {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
     }
 }
 
