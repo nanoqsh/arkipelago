@@ -5,7 +5,11 @@ use self::{config::Config, window::Window};
 use core::net::{Login, Packed};
 use eng::{Control, Game, Render};
 use glutin::event::{ElementState, MouseButton, VirtualKeyCode};
-use std::{io::Write, net::TcpStream, time::Duration};
+use std::{
+    io::{self, Write},
+    net::TcpStream,
+    time::Duration,
+};
 
 pub struct App {
     game: Game,
@@ -23,9 +27,8 @@ impl App {
     }
 
     fn key(&mut self, key: VirtualKeyCode, state: ElementState) {
-        match state {
-            ElementState::Pressed => (),
-            ElementState::Released => return,
+        if let ElementState::Released = state {
+            return;
         }
 
         let control = match key {
@@ -50,20 +53,22 @@ impl App {
     }
 }
 
-fn login(login: Login) {
+fn login(login: Login) -> Result<(), io::Error> {
     let config = Config::load();
     let addr = config.socket_addr();
     println!("Wait for connection ..");
-    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(30)).unwrap();
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(30))?;
     let packed = Packed::new(&login).unwrap();
-    stream.write_all(packed.bytes()).unwrap();
+    stream.write_all(packed.bytes())?;
+    stream.flush()
 }
 
 fn main() {
     login(Login {
         name: "nano".into(),
         pass: "123".into(),
-    });
+    })
+    .expect("login");
 
     let (window, render) = Window::new("hui 0.0.1");
     let app = App {

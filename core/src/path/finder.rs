@@ -7,7 +7,8 @@ use crate::{
     },
     point::Point,
 };
-use std::collections::{hash_map::Entry, HashMap};
+use fxhash::{FxBuildHasher, FxHashMap as HashMap};
+use std::collections::hash_map::Entry;
 
 #[derive(Default)]
 pub struct PathFinder {
@@ -20,7 +21,7 @@ pub struct PathFinder {
 impl PathFinder {
     pub fn new() -> Self {
         Self {
-            closed: HashMap::with_capacity(64),
+            closed: HashMap::with_capacity_and_hasher(64, FxBuildHasher::default()),
             open: Vec::with_capacity(64),
             buf: Vec::with_capacity(64),
             tree: Tree::default(),
@@ -110,13 +111,10 @@ pub struct Path<'a>(&'a PathFinder);
 
 impl Path<'_> {
     pub fn points(&self) -> impl Iterator<Item = Point> + '_ {
-        self.0.closed.iter().filter_map(|(pn, ptr)| {
-            if *ptr == NodePtr::ROOT {
-                None
-            } else {
-                self.0.tree.get(*ptr).0.is_final().then(|| *pn)
-            }
-        })
+        self.0
+            .closed
+            .iter()
+            .filter_map(|(pn, ptr)| self.0.tree.get(*ptr).0.is_final().then(|| *pn))
     }
 
     pub fn to(&self, pn: Point) -> impl Iterator<Item = (Action, Point)> + '_ {

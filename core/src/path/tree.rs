@@ -39,7 +39,7 @@ impl<T> Tree<T> {
 
     pub fn push(&mut self, parent: NodePtr, val: T) -> NodePtr {
         let len = self.nodes.len() as u32;
-        assert!(parent.0 < len || parent == NodePtr::ROOT);
+        debug_assert!(parent.0 < len || parent == NodePtr::ROOT);
         self.nodes.push(Node { parent, val });
         NodePtr(len)
     }
