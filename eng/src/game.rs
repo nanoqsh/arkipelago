@@ -9,6 +9,7 @@ use crate::{
 use core::{
     path::{Flyer, PathFinder, Pedestrian, Position},
     prelude::*,
+    tile::TileList,
 };
 use image::DynamicImage;
 use ngl::{

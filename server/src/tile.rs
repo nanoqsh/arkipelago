@@ -1,5 +1,5 @@
 use crate::{cluster::Cluster, layout::Data, tiles};
-use core::{point::Point, prelude::*};
+use core::{point::Point, prelude::*, tile};
 use std::collections::HashMap;
 
 pub struct Placement<'a> {
@@ -23,7 +23,7 @@ pub struct TileSet {
 impl TileSet {
     pub fn new<'a, T>(tiles: T) -> Self
     where
-        T: IntoIterator<Item = &'a TileInfo>,
+        T: IntoIterator<Item = &'a tile::Tile>,
     {
         let mut tile_set = Self {
             map: HashMap::default(),
@@ -76,7 +76,6 @@ pub trait GetTile<I> {
 
 impl GetTile<TileIndex> for TileSet {
     fn get_tile(&self, idx: TileIndex) -> Option<&dyn Tile> {
-        debug_assert_ne!(idx.get(), 0);
         self.vec.get(idx.get() as usize).map(Box::as_ref)
     }
 }

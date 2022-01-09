@@ -50,29 +50,29 @@ impl fmt::Debug for VariantIndex {
     }
 }
 
-pub struct VariantInfo {
+pub struct Variant {
     pub idx: VariantIndex,
     pub name: String,
     pub rotation: Rotation,
     pub passes: Vec<Pass>,
 }
 
-pub struct TileInfo {
+pub struct Tile {
     pub idx: TileIndex,
     pub name: Rc<str>,
     pub height: Height,
-    pub variants: Vec<VariantInfo>,
+    pub variants: Vec<Variant>,
 }
 
-impl TileInfo {
-    pub fn variant(&self, idx: VariantIndex) -> &VariantInfo {
+impl Tile {
+    pub fn variant(&self, idx: VariantIndex) -> &Variant {
         &self.variants[idx.0 as usize]
     }
 }
 
 pub struct TileList {
     map: HashMap<Rc<str>, TileIndex>,
-    vec: Vec<TileInfo>,
+    vec: Vec<Tile>,
 }
 
 impl TileList {
@@ -80,7 +80,7 @@ impl TileList {
     pub fn new() -> Self {
         let mut list = Self {
             map: HashMap::default(),
-            vec: vec![TileInfo {
+            vec: vec![Tile {
                 idx: TileIndex::new(1).unwrap(),
                 name: "".into(),
                 height: Height::new(1).unwrap(),
@@ -102,13 +102,13 @@ impl TileList {
         let name = name.into();
         let old = self.map.insert(Rc::clone(&name), tile_idx);
         assert!(old.is_none());
-        self.vec.push(TileInfo {
+        self.vec.push(Tile {
             idx: tile_idx,
             name,
             variants: variants
                 .into_iter()
                 .enumerate()
-                .map(|(idx, (name, rotation, passes))| VariantInfo {
+                .map(|(idx, (name, rotation, passes))| Variant {
                     idx: {
                         assert!(idx <= u8::MAX as usize);
                         VariantIndex(idx as u8)
@@ -125,16 +125,16 @@ impl TileList {
         });
     }
 
-    pub fn get(&self, idx: TileIndex) -> &TileInfo {
-        self.vec.get(idx.0 as usize).unwrap()
+    pub fn get(&self, idx: TileIndex) -> &Tile {
+        &self.vec[idx.0 as usize]
     }
 
-    pub fn get_by_name(&self, name: &str) -> Option<&TileInfo> {
+    pub fn get_by_name(&self, name: &str) -> Option<&Tile> {
         let idx = self.map.get(name)?;
         Some(self.get(*idx))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &TileInfo> {
+    pub fn iter(&self) -> impl Iterator<Item = &Tile> {
         self.vec.iter()
     }
 }

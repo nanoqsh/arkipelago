@@ -10,6 +10,7 @@ use core::{
     map::{Column, Map},
     path::{Pass, Space},
     prelude::*,
+    tile,
 };
 use shr::cgm::Vec3;
 
@@ -101,7 +102,7 @@ impl ClusterView {
         }
     }
 
-    pub fn place(&mut self, pn: Point, tile: &TileInfo, variant: VariantIndex) {
+    pub fn place(&mut self, pn: Point, tile: &tile::Tile, variant: VariantIndex) {
         let height = tile.height;
         let mut column = self.map.column_mut(pn, height);
         let key = (tile.idx, variant);

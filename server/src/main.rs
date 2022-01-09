@@ -11,7 +11,7 @@ mod tiles;
 use self::{config::Config, tile::TileSet};
 use core::{
     net::{Login, Unpacked},
-    prelude::*,
+    tile::TileList,
 };
 use std::io;
 use tokio::{

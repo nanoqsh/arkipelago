@@ -7,7 +7,7 @@ pub mod path;
 pub mod point;
 pub mod rotation;
 pub mod side;
-mod tile;
+pub mod tile;
 
 pub mod prelude {
     pub use crate::{
@@ -16,6 +16,6 @@ pub mod prelude {
         point::{ChunkPoint, ClusterPoint, Point},
         rotation::Rotation,
         side::{Side, Sides},
-        tile::{TileIndex, TileInfo, TileList, VariantIndex},
+        tile::{TileIndex, VariantIndex},
     };
 }
