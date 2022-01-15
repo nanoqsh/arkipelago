@@ -25,7 +25,7 @@ impl fmt::Display for TileIndex {
 
 impl fmt::Debug for TileIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -46,7 +46,7 @@ impl fmt::Display for VariantIndex {
 
 impl fmt::Debug for VariantIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

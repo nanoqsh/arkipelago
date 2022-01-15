@@ -202,13 +202,13 @@ impl From<ChunkPoint> for Vec3 {
 impl fmt::Display for ChunkPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (x, y, z) = self.axes();
-        write!(f, "[{}, {}, {}]", x, y, z)
+        write!(f, "[{x}, {y}, {z}]")
     }
 }
 
 impl fmt::Debug for ChunkPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

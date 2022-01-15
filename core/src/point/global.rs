@@ -37,8 +37,8 @@ impl fmt::Display for ParseError {
             Self::Y => write!(f, "no y specified"),
             Self::Z => write!(f, "no z specified"),
             Self::TooManyAxes => write!(f, "too many axes"),
-            Self::Int(int) => write!(f, "parse int {}", int),
-            Self::Error(err) => write!(f, "point error {}", err),
+            Self::Int(int) => write!(f, "parse int {int}"),
+            Self::Error(err) => write!(f, "point error {err}"),
         }
     }
 }
@@ -136,12 +136,10 @@ impl fmt::Display for Point {
         let (x, y, z) = self.absolute_point();
         write!(
             f,
-            "{} {}{}{} {}",
-            x,
+            "{x} {}{}{} {z}",
             if y < 0 { "-" } else { "" },
             (y / 2).abs(),
             if y % 2 == 0 { "" } else { ".5" },
-            z
         )
     }
 }
@@ -149,7 +147,7 @@ impl fmt::Display for Point {
 impl fmt::Debug for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (x, y, z) = self.absolute_point();
-        write!(f, "{{{}, {}, {}}}", x, y, z)
+        write!(f, "{{{x}, {y}, {z}}}")
     }
 }
 

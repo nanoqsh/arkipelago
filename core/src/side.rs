@@ -12,7 +12,7 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Char(ch) => write!(f, "wrong char {}", ch),
+            Self::Char(ch) => write!(f, "wrong char {ch}"),
             Self::EmptyString => write!(f, "empty string"),
             Self::TooManySides => write!(f, "too many sides"),
         }
@@ -231,7 +231,7 @@ impl fmt::Display for Sides {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "[")?;
         for side in *self {
-            write!(f, "{}", side)?;
+            write!(f, "{side}")?;
         }
         write!(f, "]")
     }
@@ -239,7 +239,7 @@ impl fmt::Display for Sides {
 
 impl fmt::Debug for Sides {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

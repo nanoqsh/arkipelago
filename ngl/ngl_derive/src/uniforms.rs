@@ -20,7 +20,7 @@ pub(crate) fn impl_macro(ast: &DeriveInput) -> impl Into<TokenStream> {
     let field_type = ds.fields.iter().map(|field| &field.ty);
     let function = ds.fields.iter().map(|field| {
         let field_name = field.ident.as_ref().unwrap();
-        let set_name = format_ident!("set_{}", field_name);
+        let set_name = format_ident!("set_{field_name}");
 
         match &field.ty {
             Type::Array(TypeArray { elem, .. }) => quote! {

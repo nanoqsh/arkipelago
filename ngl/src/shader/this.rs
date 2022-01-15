@@ -14,7 +14,7 @@ pub(crate) struct Declaration<'a> {
 
 impl Declaration<'_> {
     fn write_glsl(&self, kind: &str, out: &mut String) {
-        write!(out, "{} ", kind).unwrap();
+        write!(out, "{kind} ").unwrap();
         (self.typ)(out);
         write!(out, " {}", self.name).unwrap();
     }
@@ -36,14 +36,14 @@ impl Shader<'_> {
             !matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_')
         }
 
-        writeln!(out, "{}", VERSION).unwrap();
+        writeln!(out, "{VERSION}").unwrap();
 
         let mut fields = Vec::new();
         (self.layout)(&mut fields);
-        for (idx, field) in fields.into_iter().enumerate() {
-            write!(out, "layout (location = {}) in ", idx).unwrap();
-            (field.declare)(out);
-            writeln!(out, " {};", field.name).unwrap();
+        for (idx, Field { name, declare, .. }) in fields.into_iter().enumerate() {
+            write!(out, "layout (location = {idx}) in ").unwrap();
+            declare(out);
+            writeln!(out, " {name};").unwrap();
         }
 
         for uni in self.uniforms {
@@ -63,7 +63,7 @@ impl Shader<'_> {
 
         let mut chunks = self.src.split('$');
         if let Some(first) = chunks.next() {
-            write!(out, "{}", first).unwrap();
+            write!(out, "{first}").unwrap();
         }
 
         for chunk in chunks {
@@ -73,10 +73,10 @@ impl Shader<'_> {
             };
 
             match self.consts.get(key) {
-                None => panic!("key {} not found", key),
+                None => panic!("key {key} not found"),
                 Some(glsl) => glsl.literal(out),
             }
-            write!(out, "{}", rest).unwrap()
+            write!(out, "{rest}").unwrap()
         }
     }
 

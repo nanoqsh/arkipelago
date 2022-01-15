@@ -104,7 +104,7 @@ impl Game {
                     let idx = match sprite {
                         None => 0,
                         Some(name) => match sprite_names.get(name) {
-                            None => panic!("sprite {} not found", name),
+                            None => panic!("sprite {name} not found"),
                             Some(&idx) => idx,
                         },
                     };
@@ -239,7 +239,8 @@ impl Game {
             &view,
         );
         let end = Instant::now();
-        println!("elapsed: {} ms", end.duration_since(start).as_millis());
+        let elapsed = end.duration_since(start).as_millis();
+        println!("elapsed: {elapsed} ms");
 
         let path = pf.path();
         let cells = path.points().map(|pn| Cell(pn.into())).collect();

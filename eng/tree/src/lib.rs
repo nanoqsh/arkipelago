@@ -27,7 +27,7 @@ impl<P> fmt::Display for Error<P> {
     }
 }
 
-impl<P> error::Error for Error<P> where P: fmt::Debug {}
+impl<P: fmt::Debug> error::Error for Error<P> {}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Node<V> {

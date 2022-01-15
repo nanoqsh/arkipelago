@@ -53,7 +53,7 @@ async fn main() {
         .expect("bind tcp listener");
 
     let addr = listener.local_addr().unwrap();
-    println!("The server is listening on {}", addr);
+    println!("The server is listening on {addr}");
 
     let tiles = TileList::new();
     let _ = TileSet::new(tiles.iter());
@@ -61,22 +61,22 @@ async fn main() {
     loop {
         let mut stream = match listener.accept().await {
             Ok((stream, addr)) => {
-                println!("Connection accepted: {}", addr);
+                println!("Connection accepted: {addr}");
                 stream
             }
             Err(err) => {
-                println!("Connection failed: {}", err);
+                println!("Connection failed: {err}");
                 continue;
             }
         };
 
         tokio::spawn(async move {
-            let login = match process(&mut stream).await {
+            let Login { name, pass } = match process(&mut stream).await {
                 Ok(login) => login,
                 Err(err) => panic!("Login failed: {:?}", err),
             };
 
-            println!("Try to login: {} {}", login.name, login.pass);
+            println!("Try to login: {name} {pass}");
         });
     }
 }

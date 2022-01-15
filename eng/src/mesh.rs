@@ -10,9 +10,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::IndxsLen(len) => write!(f, "wrong indices len {}", len),
-            Self::VertIndex(idx) => write!(f, "wrong vertex index {}", idx),
-            Self::FaceIndex(idx) => write!(f, "wrong face index {}", idx),
+            Self::IndxsLen(len) => write!(f, "wrong indices len {len}"),
+            Self::VertIndex(idx) => write!(f, "wrong vertex index {idx}"),
+            Self::FaceIndex(idx) => write!(f, "wrong face index {idx}"),
         }
     }
 }

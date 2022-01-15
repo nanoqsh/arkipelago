@@ -3,7 +3,7 @@ use crate::{
     shader::Shader,
     uniform::Uniform,
 };
-use glow::{Context, HasContext, NativeProgram};
+use glow::{ActiveUniform, Context, HasContext, NativeProgram};
 use std::{cell::Cell, rc::Rc};
 
 pub(crate) struct Program {
@@ -35,11 +35,12 @@ impl Program {
                     ctx.compile_shader(shader);
 
                     if cfg!(debug_assertions) {
-                        println!("[ DEBUG ] Shader:\n{}", buf);
+                        println!("[ DEBUG ] Shader:\n{buf}");
                     }
 
                     if !ctx.get_shader_compile_status(shader) {
-                        panic!("{}", ctx.get_shader_info_log(shader));
+                        let log = ctx.get_shader_info_log(shader);
+                        panic!("{log}");
                     }
 
                     ctx.attach_shader(nat, shader);
@@ -49,7 +50,8 @@ impl Program {
 
             ctx.link_program(nat);
             if !ctx.get_program_link_status(nat) {
-                panic!("{}", ctx.get_program_info_log(nat));
+                let log = ctx.get_program_info_log(nat);
+                panic!("{log}");
             }
 
             for shader in shaders {
@@ -89,7 +91,8 @@ impl Program {
                 }
 
                 if cfg!(debug_assertions) {
-                    println!("[ DEBUG ] Var: {} {}", uni.name, uni.size);
+                    let ActiveUniform { name, size, .. } = &uni;
+                    println!("[ DEBUG ] Var: {name} {size}");
                 }
 
                 locs.insert(uni.name, UniformInfo::new(nat, uni.utype, uni.size as _))

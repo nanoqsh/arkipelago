@@ -115,13 +115,13 @@ impl From<ClusterPoint> for IVec3 {
 impl fmt::Display for ClusterPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Self { x, y, z } = self;
-        write!(f, "[{}, {}, {}]", x, y, z)
+        write!(f, "[{x}, {y}, {z}]")
     }
 }
 
 impl fmt::Debug for ClusterPoint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

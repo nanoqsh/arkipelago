@@ -14,7 +14,7 @@ pub(crate) enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::MissedSprite(sprite) => write!(f, "missed sprite {}", sprite),
+            Self::MissedSprite(sprite) => write!(f, "missed sprite {sprite}"),
         }
     }
 }
@@ -104,7 +104,10 @@ impl VariantSet {
     pub fn get(&self, key: (TileIndex, VariantIndex)) -> &Variant {
         match self.0.get(&key) {
             Some(variant) => variant,
-            None => panic!("not found {} {}", key.0, key.1),
+            None => {
+                let (tile, variant) = key;
+                panic!("not found {tile} {variant}")
+            }
         }
     }
 

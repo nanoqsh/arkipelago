@@ -31,7 +31,7 @@ impl fmt::Display for VariantError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Empty => write!(f, "variant is empty"),
-            Self::Slot(slot) => write!(f, "wrong slot {}", slot),
+            Self::Slot(slot) => write!(f, "wrong slot {slot}"),
         }
     }
 }

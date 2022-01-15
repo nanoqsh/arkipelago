@@ -68,7 +68,7 @@ impl<'a, L: Load> EventLoad<'a, L> {
     }
 
     pub fn set_event(&mut self, event: Event<'a, L::Asset>) {
-        self.event = Some(event.into())
+        self.event = Some(event)
     }
 }
 

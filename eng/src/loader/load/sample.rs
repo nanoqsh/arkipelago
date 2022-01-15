@@ -23,8 +23,8 @@ enum SampleError {
 impl fmt::Display for SampleError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::OverlayLen(len) => write!(f, "wrong overlay len {}", len),
-            Self::Overlay(str) => write!(f, "wrong overlay {}", str),
+            Self::OverlayLen(len) => write!(f, "wrong overlay len {len}"),
+            Self::Overlay(str) => write!(f, "wrong overlay {str}"),
         }
     }
 }

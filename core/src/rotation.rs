@@ -11,7 +11,7 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Num(num) => write!(f, "wrong number {}", num),
+            Self::Num(num) => write!(f, "wrong number {num}"),
         }
     }
 }
@@ -129,7 +129,7 @@ impl fmt::Display for Rotation {
 
 impl fmt::Debug for Rotation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

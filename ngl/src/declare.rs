@@ -18,7 +18,7 @@ impl Declare for i32 {
     }
 
     fn literal(&self, out: &mut String) {
-        write!(out, "{}", *self).unwrap()
+        write!(out, "{self}").unwrap()
     }
 }
 
@@ -28,7 +28,7 @@ impl Declare for u32 {
     }
 
     fn literal(&self, out: &mut String) {
-        write!(out, "{}u", *self).unwrap()
+        write!(out, "{self}u").unwrap()
     }
 }
 
@@ -38,7 +38,7 @@ impl Declare for f32 {
     }
 
     fn literal(&self, out: &mut String) {
-        write!(out, "{}", self,).unwrap();
+        write!(out, "{self}").unwrap();
 
         if self.fract() == 0. {
             write!(out, ".0",).unwrap();
@@ -52,14 +52,15 @@ impl Declare for bool {
     }
 
     fn literal(&self, out: &mut String) {
-        write!(out, "{}", if *self { "true" } else { "false" }).unwrap()
+        let lit = if *self { "true" } else { "false" };
+        write!(out, "{lit}").unwrap()
     }
 }
 
 impl<T: Declare, const N: usize> Declare for [T; N] {
     fn declare_type(out: &mut String) {
         T::declare_type(out);
-        write!(out, "[{}]", N).unwrap()
+        write!(out, "[{N}]").unwrap()
     }
 
     fn literal(&self, out: &mut String) {
