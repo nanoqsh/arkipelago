@@ -11,14 +11,13 @@ use core::{
     prelude::*,
     tile::TileList,
 };
-use image::DynamicImage;
 use ngl::{
     mesh::Indexed,
     pass::{Pass, Solid, Stage},
     Draw, Pipe, Pipeline,
 };
 use shr::cgm::*;
-use std::{collections::HashMap, rc::Rc, time::Instant};
+use std::{collections::HashMap, time::Instant};
 
 struct Data {
     pub mesh: Indexed<Vert>,
@@ -70,8 +69,7 @@ impl Game {
 
         let mut polygons = {
             let mut loader = Loader::new(ren);
-            loader.on_load_sprite(|name, sprite: Rc<DynamicImage>| {
-                let (_, name) = name.split_once('/').unwrap();
+            loader.on_load_sprite(|name, sprite| {
                 if sprites.is_empty() {
                     assert_eq!(name, "default")
                 }
@@ -79,9 +77,10 @@ impl Game {
                 assert!(sprite_names
                     .insert(name.to_string(), sprites.len() as u32)
                     .is_none());
-                sprites.push(sprite);
+
+                sprites.push(sprite.clone());
             });
-            loader.load_sprite("tiles/default").unwrap();
+            loader.load_sprite("default").unwrap();
 
             for info in tiles.iter() {
                 for variant in &info.variants {
@@ -93,7 +92,7 @@ impl Game {
             loader.take_polygons()
         };
 
-        let atlas = Atlas::new(sprites.iter().map(Rc::as_ref)).unwrap();
+        let atlas = Atlas::new(sprites.iter()).unwrap();
         let (map, mapper) = atlas.map();
         let map = ren.make_texture(&map);
         let mut factory = Factory::new(mapper);

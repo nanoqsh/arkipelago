@@ -1,8 +1,9 @@
 use crate::{
-    loader::re::*,
+    loader::{load::Load, read::ReadJson, Error},
     mesh::{self, Slots},
     Mesh, Vert,
 };
+use serde::Deserialize;
 use std::collections::HashMap;
 
 #[derive(Deserialize)]
@@ -41,14 +42,17 @@ fn load(mesh: RawMesh) -> Result<Mesh, mesh::Error> {
     )
 }
 
-pub(crate) struct MeshLoad;
+pub(crate) struct MeshLoad {
+    pub read: ReadJson,
+}
 
-impl<'a> Load<'a> for MeshLoad {
-    const PATH: &'static str = "meshes";
-    type Format = Json<'a, RawMesh>;
+impl Load for MeshLoad {
     type Asset = Mesh;
+    type Error = Error;
 
-    fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
+    fn load(&mut self, name: &str) -> Result<Self::Asset, Self::Error> {
+        let content = self.read.read(name)?;
+        let raw = serde_json::from_str(content)?;
         let mesh = load(raw)?;
         Ok(mesh)
     }

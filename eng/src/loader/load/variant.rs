@@ -5,11 +5,10 @@ use crate::{
         Factory, Parameters,
     },
     loader::{
-        load::{Sample, SampleLoad, SpriteLoad, ToShape},
-        re::*,
-        reader::Reader,
+        load::{Cached, EventLoad, Load, Sample, SampleLoad, SpriteLoad, ToShape},
+        read::ReadJson,
+        Error,
     },
-    Mesh,
 };
 use core::prelude::*;
 use image::DynamicImage;
@@ -208,39 +207,23 @@ where
     })
 }
 
-pub(crate) struct VariantLoad<'a, 'b> {
-    pub sprites: &'a mut Reader<'b, DynamicImage>,
-    pub meshes: &'a mut Reader<'b, Mesh, String>,
-    pub samples: &'a mut Reader<'b, Sample, String>,
-    pub polygons: &'a mut Polygons,
+pub(crate) struct VariantLoad<'a> {
+    pub read: ReadJson,
+    pub sprites: Rc<RefCell<Cached<EventLoad<'a, SpriteLoad>>>>,
+    pub samples: Rc<RefCell<Cached<EventLoad<'a, SampleLoad<'a>>>>>,
 }
 
-impl<'a> Load<'a> for VariantLoad<'a, '_> {
-    const PATH: &'static str = "variants";
-    type Format = Json<'a, RawVariant<'a>>;
+impl Load for VariantLoad<'_> {
     type Asset = ToVariant;
+    type Error = Error;
 
-    fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
-        const PREFIX: &str = "tiles/";
-        let mut prefix = String::with_capacity(16);
-
+    fn load(&mut self, name: &str) -> Result<Self::Asset, Error> {
+        let content = self.read.read(name)?;
+        let raw = serde_json::from_str(content)?;
         load(
             raw,
-            |name| {
-                prefix.clear();
-                prefix.push_str(PREFIX);
-                prefix.push_str(name);
-                self.sprites.read_png(&prefix, SpriteLoad)
-            },
-            |name| {
-                self.samples.read_json(
-                    name,
-                    SampleLoad {
-                        meshes: self.meshes,
-                        polygons: self.polygons,
-                    },
-                )
-            },
+            |name| self.sprites.borrow_mut().load(name),
+            |name| self.samples.borrow_mut().load(name),
         )
     }
 }

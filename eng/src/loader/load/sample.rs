@@ -3,12 +3,16 @@ use crate::{
         polygon::{Polygon, Polygons},
         Connections, Overlay,
     },
-    loader::{load::MeshLoad, re::*, reader::Reader},
+    loader::{
+        load::{Cached, EventLoad, Load, MeshLoad},
+        read::ReadJson,
+        Error,
+    },
     Mesh,
 };
 use core::prelude::*;
 use serde::Deserialize;
-use std::{collections::HashMap, error, fmt, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, error, fmt, rc::Rc};
 
 #[derive(Debug)]
 enum SampleError {
@@ -115,21 +119,23 @@ where
     })
 }
 
-pub(crate) struct SampleLoad<'a, 'b> {
-    pub meshes: &'a mut Reader<'b, Mesh, String>,
-    pub polygons: &'a mut Polygons,
+pub(crate) struct SampleLoad<'a> {
+    pub read: ReadJson,
+    pub meshes: Rc<RefCell<Cached<EventLoad<'a, MeshLoad>>>>,
+    pub polygons: Polygons,
 }
 
-impl<'a> Load<'a> for SampleLoad<'a, '_> {
-    const PATH: &'static str = "samples";
-    type Format = Json<'a, RawSample<'a>>;
+impl Load for SampleLoad<'_> {
     type Asset = Sample;
+    type Error = Error;
 
-    fn load(self, raw: <Self::Format as Format>::Raw) -> Result<Self::Asset, Error> {
+    fn load(&mut self, name: &str) -> Result<Self::Asset, Self::Error> {
+        let content = self.read.read(name)?;
+        let raw = serde_json::from_str(content)?;
         load(
             raw,
-            |name| self.meshes.read_json(name, MeshLoad),
-            self.polygons,
+            |name| self.meshes.borrow_mut().load(name),
+            &mut self.polygons,
         )
     }
 }

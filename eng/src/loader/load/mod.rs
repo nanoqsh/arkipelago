@@ -10,6 +10,6 @@ pub(crate) use self::{
     sample::{Sample, SampleLoad, ToShape},
     sprite::SpriteLoad,
     texture::TextureLoad,
-    this::Load,
+    this::{Cached, EventLoad, Load},
     variant::{ToVariant, VariantLoad},
 };

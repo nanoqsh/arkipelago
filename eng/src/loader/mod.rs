@@ -1,18 +1,8 @@
 mod format;
 mod load;
-mod reader;
+mod read;
 #[allow(dead_code)]
 mod this;
-
-mod re {
-    pub(crate) use crate::loader::{
-        format::{Format, Json, Png},
-        load::Load,
-        Error, ASSETS_PATH,
-    };
-
-    pub use serde::Deserialize;
-}
 
 pub(crate) use self::this::Loader;
 

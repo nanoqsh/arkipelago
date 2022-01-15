@@ -1,87 +1,98 @@
 use crate::{
     land::polygon::Polygons,
     loader::{
-        load::{MeshLoad, Sample, SpriteLoad, TextureLoad, ToVariant, VariantLoad},
-        re::*,
-        reader::Reader,
+        load::{
+            Cached, EventLoad, Load, MeshLoad, SampleLoad, SpriteLoad, TextureLoad, ToVariant,
+            VariantLoad,
+        },
+        read::{ReadImage, ReadJson},
+        Error,
     },
     Mesh, Render, Texture,
 };
 use image::DynamicImage;
-use std::{cell::RefCell, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 pub(crate) struct Loader<'a> {
-    textures: Reader<'a, Texture>,
-    sprites: Reader<'a, DynamicImage>,
-    meshes: Reader<'a, Mesh, String>,
-    samples: Reader<'a, Sample, String>,
-    variants: Reader<'a, ToVariant, String>,
-    ren: &'a Render,
-    polygons: Polygons,
+    textures: Cached<EventLoad<'a, TextureLoad<'a>>>,
+    sprites: Rc<RefCell<Cached<EventLoad<'a, SpriteLoad>>>>,
+    meshes: Rc<RefCell<Cached<EventLoad<'a, MeshLoad>>>>,
+    samples: Rc<RefCell<Cached<EventLoad<'a, SampleLoad<'a>>>>>,
+    variants: Cached<EventLoad<'a, VariantLoad<'a>>>,
 }
 
 impl<'a> Loader<'a> {
     pub fn new(ren: &'a Render) -> Self {
-        let buf = Rc::new(RefCell::new(PathBuf::with_capacity(64)));
+        let sprites = Rc::new(RefCell::new(Cached::new(EventLoad::new(SpriteLoad {
+            read: ReadImage::new("textures/tiles"),
+        }))));
+
+        let meshes = Rc::new(RefCell::new(Cached::new(EventLoad::new(MeshLoad {
+            read: ReadJson::new("meshes"),
+        }))));
+
+        let samples = Rc::new(RefCell::new(Cached::new(EventLoad::new(SampleLoad {
+            read: ReadJson::new("samples"),
+            meshes: Rc::clone(&meshes),
+            polygons: Polygons::with_capacity(16),
+        }))));
 
         Self {
-            textures: Reader::with_capacity((), Rc::clone(&buf), 8),
-            sprites: Reader::with_capacity((), Rc::clone(&buf), 8),
-            meshes: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
-            samples: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
-            variants: Reader::with_capacity(String::with_capacity(64), Rc::clone(&buf), 8),
-            ren,
-            polygons: Polygons::with_capacity(16),
+            textures: Cached::new(EventLoad::new(TextureLoad {
+                read: ReadImage::new("textures"),
+                ren,
+            })),
+            sprites: Rc::clone(&sprites),
+            meshes,
+            samples: Rc::clone(&samples),
+            variants: Cached::new(EventLoad::new(VariantLoad {
+                read: ReadJson::new("variants"),
+                sprites,
+                samples,
+            })),
         }
     }
 
     pub fn load_texture(&mut self, name: &str) -> Result<Rc<Texture>, Error> {
-        self.textures.read_png(name, TextureLoad { ren: self.ren })
+        self.textures.load(name)
     }
 
     pub fn load_sprite(&mut self, name: &str) -> Result<Rc<DynamicImage>, Error> {
-        self.sprites.read_png(name, SpriteLoad)
+        self.sprites.borrow_mut().load(name)
     }
 
     pub fn load_mesh(&mut self, name: &str) -> Result<Rc<Mesh>, Error> {
-        self.meshes.read_json(name, MeshLoad)
+        self.meshes.borrow_mut().load(name)
     }
 
     pub fn load_variant(&mut self, name: &str) -> Result<Rc<ToVariant>, Error> {
-        self.variants.read_json(
-            name,
-            VariantLoad {
-                sprites: &mut self.sprites,
-                meshes: &mut self.meshes,
-                samples: &mut self.samples,
-                polygons: &mut self.polygons,
-            },
-        )
+        self.variants.load(name)
     }
 
     pub fn on_load_texture<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<Texture>) + 'a,
+        F: FnMut(&str, &Texture) + 'a,
     {
-        self.textures.on_load(Box::new(event))
+        self.textures.set_event(Box::new(event))
     }
 
     pub fn on_load_sprite<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<DynamicImage>) + 'a,
+        F: FnMut(&str, &DynamicImage) + 'a,
     {
-        self.sprites.on_load(Box::new(event))
+        self.sprites.borrow_mut().set_event(Box::new(event))
     }
 
     pub fn on_load_mesh<F>(&mut self, event: F)
     where
-        F: FnMut(&str, Rc<Mesh>) + 'a,
+        F: FnMut(&str, &Mesh) + 'a,
     {
-        self.meshes.on_load(Box::new(event))
+        self.meshes.borrow_mut().set_event(Box::new(event))
     }
 
     pub fn take_polygons(&mut self) -> Polygons {
-        self.polygons.shrink_to_fit();
-        std::mem::take(&mut self.polygons)
+        let polygons = &mut self.samples.borrow_mut().polygons;
+        polygons.shrink_to_fit();
+        std::mem::take(polygons)
     }
 }
