@@ -59,7 +59,7 @@ impl Render {
 
         Self {
             shaders: Shaders::new(Rc::clone(&ctx)),
-            frame: Frame::new(Rc::clone(&ctx), UVec2::new(1, 1), 0),
+            frame: Frame::new(Rc::clone(&ctx), UVec2::new(1, 1), 2),
             pipeline: Pipeline::default(),
             line: Line::new(Rc::clone(&ctx)),
             quad: Quad::new(Rc::clone(&ctx)),
@@ -113,11 +113,13 @@ impl Render {
         let (width, height) = self.size.into();
         self.frame.bind();
         unsafe {
+            const SSAA_FACTOR: u32 = 2;
+
             self.ctx.viewport(
                 0,
                 0,
-                (width / self.pixel_size) as _,
-                (height / self.pixel_size) as _,
+                ((width / self.pixel_size) * SSAA_FACTOR) as _,
+                ((height / self.pixel_size) * SSAA_FACTOR) as _,
             );
 
             let (r, g, b) = params.cl.into();

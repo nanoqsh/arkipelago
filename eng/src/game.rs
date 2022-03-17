@@ -233,7 +233,7 @@ impl Game {
         pf.find(
             Position {
                 pn: Point::from_absolute(3, 2, 3).unwrap(),
-                value: 16,
+                value: 5,
             },
             &walk,
             &view,

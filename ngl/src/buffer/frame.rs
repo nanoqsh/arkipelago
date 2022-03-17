@@ -8,6 +8,7 @@ use shr::cgm::*;
 use std::rc::Rc;
 
 enum Buffers {
+    #[allow(dead_code)]
     Single(Framebuffer),
     Double {
         multisample: Framebuffer,
@@ -18,24 +19,28 @@ enum Buffers {
 pub(crate) struct Frame {
     buffers: Buffers,
     size: UVec2,
+    factor: u32,
 }
 
 impl Frame {
-    pub fn new(ctx: Rc<Context>, size: UVec2, samples: u8) -> Self {
+    pub fn new(ctx: Rc<Context>, size: UVec2, factor: u32) -> Self {
+        assert!(factor > 0);
+
         let attachments = Attachments {
             renderbuffer: Some(renderbuffer::Format::Depth24),
             textures: &[texture::Format::Rgb],
         };
 
-        let buffers = match samples {
-            0 => Buffers::Single(Framebuffer::new(ctx, attachments, size, samples)),
-            _ => Buffers::Double {
-                multisample: Framebuffer::new(Rc::clone(&ctx), attachments, size, samples),
-                intermediate: Framebuffer::new(ctx, attachments, size, 0),
-            },
+        let buffers = Buffers::Double {
+            multisample: Framebuffer::new(Rc::clone(&ctx), attachments, size * factor),
+            intermediate: Framebuffer::new(ctx, attachments, size),
         };
 
-        Self { buffers, size }
+        Self {
+            buffers,
+            size,
+            factor,
+        }
     }
 
     pub fn resize(&mut self, size: UVec2) {
@@ -45,7 +50,7 @@ impl Frame {
                 multisample,
                 intermediate,
             } => {
-                multisample.resize(size);
+                multisample.resize(size * self.factor);
                 intermediate.resize(size);
             }
         }
@@ -66,7 +71,7 @@ impl Frame {
                 multisample,
                 intermediate,
             } => {
-                multisample.blit_to(intermediate, self.size);
+                multisample.blit_to(intermediate, self.size, self.factor);
                 multisample.bind_default();
             }
         }

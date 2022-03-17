@@ -24,11 +24,11 @@ pub(crate) struct Framebuffer {
 }
 
 impl Framebuffer {
-    pub fn new(ctx: Rc<Context>, attachments: Attachments, size: UVec2, samples: u8) -> Self {
+    pub fn new(ctx: Rc<Context>, attachments: Attachments, size: UVec2) -> Self {
         unsafe {
             let nat = ctx.create_framebuffer().expect("create framebuffer");
             ctx.bind_framebuffer(glow::FRAMEBUFFER, Some(nat));
-            let (renderbuffer, textures) = attachments.attach(Rc::clone(&ctx), size, samples);
+            let (renderbuffer, textures) = attachments.attach(Rc::clone(&ctx), size);
 
             if let Err(err) = Self::check_completion(&ctx) {
                 panic!("framebuffer is not completed: {:?}", err)
@@ -65,7 +65,7 @@ impl Framebuffer {
         self.textures.get(idx).map(|Tx { tex, .. }| tex)
     }
 
-    pub fn blit_to(&self, rhs: &Self, size: UVec2) {
+    pub fn blit_to(&self, rhs: &Self, size: UVec2, factor: u32) {
         let (width, height) = size.into();
 
         unsafe {
@@ -76,14 +76,14 @@ impl Framebuffer {
             self.ctx.blit_framebuffer(
                 0,
                 0,
-                width as _,
-                height as _,
+                (width * factor) as _,
+                (height * factor) as _,
                 0,
                 0,
                 width as _,
                 height as _,
                 glow::COLOR_BUFFER_BIT,
-                glow::NEAREST,
+                glow::LINEAR,
             )
         }
     }
@@ -109,13 +109,10 @@ pub(crate) struct Attachments<'a> {
 }
 
 impl Attachments<'_> {
-    fn attach(self, ctx: Rc<Context>, size: UVec2, samples: u8) -> (Option<Rb>, Vec<Tx>) {
+    fn attach(self, ctx: Rc<Context>, size: UVec2) -> (Option<Rb>, Vec<Tx>) {
         let renderbuffer = self.renderbuffer.map(|format| unsafe {
             let params = renderbuffer::Parameters {
-                typ: match samples {
-                    0 => renderbuffer::Type::Common,
-                    _ => renderbuffer::Type::Multisample(samples),
-                },
+                typ: renderbuffer::Type::Common,
                 format,
             };
 
@@ -135,11 +132,7 @@ impl Attachments<'_> {
             .iter()
             .enumerate()
             .map(|(n, &format)| unsafe {
-                let typ = match samples {
-                    0 => texture::Type::Common,
-                    _ => texture::Type::Multisample(samples),
-                };
-
+                let typ = texture::Type::Common;
                 let params = texture::Parameters {
                     typ,
                     format,

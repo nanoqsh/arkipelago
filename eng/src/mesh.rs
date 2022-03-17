@@ -62,10 +62,7 @@ impl Slots {
     }
 
     pub fn face_indices(&self) -> impl Iterator<Item = u32> + '_ {
-        self.0
-            .iter()
-            .map(|(_, slot)| slot.iter().copied())
-            .flatten()
+        self.0.iter().flat_map(|(_, slot)| slot.iter().copied())
     }
 
     pub fn faces_max_len(&self) -> usize {
